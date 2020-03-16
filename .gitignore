@@ -259,3 +259,16 @@ paket-files/
 # Python Tools for Visual Studio (PTVS)
 __pycache__/
 *.pyc
+
+# from https://gist.github.com/davidfowl/ed7564297c61fe9ab814
+[Oo]bj/
+[Bb]in/
+.nuget/
+_ReSharper.*
+packages/
+artifacts/
+*.user
+*.suo
+*.userprefs
+*DS_Store
+*.sln.ide
