@@ -39,11 +39,25 @@ namespace PrintRenderer
         }
     }
 
+    public struct RenderResult
+    {
+        public bool Complete;
+        public Rectangle BBox;
+
+        internal void Clear()
+        {
+            Complete = false;
+            BBox.X = 0;
+            BBox.Y = 0;
+            BBox.Width = 0;
+            BBox.Height = 0;
+        }
+    }
+
     public interface IRenderer
     {
-        void Render(Graphics g, Rectangle bbox);
+        void Render(Graphics g, ref Rectangle bbox, ref RenderResult result);
         bool MoreContentAvailable { get; }
-        bool CanBeginRender(Graphics g, Rectangle bbox);
-        int Height { get; }
+        bool CanBeginRender(Graphics g, ref Rectangle bbox);
     }
 }

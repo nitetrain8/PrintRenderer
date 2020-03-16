@@ -10,6 +10,7 @@ namespace TestCode1
     public class MyFonts
     {
         public static readonly Font Consolas10 = new Font("Consolas", 10);
+        public static readonly Font Consolas6 = new Font("Consolas", 6);
     }
 
     internal class TestCode
@@ -25,22 +26,32 @@ namespace TestCode1
             const string file = "testcode2.pdf";
             SimpleGridPrinter doc = CreatePDFPRinter(file);
 
-            int[] widths = new int[] { 300, 200, 100 };
+            int[] widths = new int[] { 200, 400, 150 };
 
             Random rng = new Random();
             string[] step_types = new string[] { "Set", "Wait", "Wait Until" };
             string[] variables = new string[] { "AgPV(RPM)", "TempPV(C)", "DOO2FlowControllerRequestLimited(%)" };
             string[] ops = new string[] { "<", ">", "<=", ">=", "=", "!=" };
 
-            string step_type() => step_types[rng.Next(0, step_types.Length)];
-            string variable() => step_types[rng.Next(0, variables.Length)];
-            string op() => step_types[rng.Next(0, ops.Length)];
+            string pick_one(string[] arr) => arr[rng.Next(0, arr.Length)];
+            string step_type() => pick_one(step_types);
+            string variable() => pick_one(variables);
+            string op() => pick_one(ops);
             DateTime min_date = new DateTime(2018, 1, 1, 0, 0, 0);
             DateTime max_date = DateTime.Now;
-            TimeSpan diff = max_date - min_date;
+            double diff = (max_date - min_date).TotalHours;
             string date()
             {
-                return (min_date + new TimeSpan(rng.Next(0, (int)diff.Ticks))).ToString();
+                return (min_date + new TimeSpan(rng.Next(0, (int)diff), 0, 0)).ToString();
+            }
+
+            string[] GetStep2()
+            {
+                var step = GetStep();
+                string tmp = step[0];
+                step[0] = step[1];
+                step[1] = tmp;
+                return step;
             }
 
             string[] GetStep()
@@ -48,7 +59,7 @@ namespace TestCode1
                 string step = step_type();
                 if (step == "Set")
                 {
-                    return new string[3] { $"Set {variable()} to {rng.NextDouble() * 30}", date(), "Set"};
+                    return new string[3] { $"Set {variable()} to {(rng.NextDouble() * 30).ToString("F2")}", date(), "Set"};
                 }
                 else if (step == "Wait")
                 {
@@ -56,14 +67,22 @@ namespace TestCode1
                 }
                 else if (step == "Wait Until")
                 {
-                    return new string[3] { $"Wait Until {variable()} {op()} {rng.NextDouble() * 30}", date(), "Wait Until"};
+                    return new string[3] { $"Wait Until {variable()} {op()} {(rng.NextDouble() * 30).ToString("F2")}", date(), "Wait Until"};
                 }
                 else
                 {
                     throw new Exception("oops");
                 }
             };
-
+            for (int i = 0; i < 1000; ++i)
+            {
+                var row = new RowRenderer();
+                string[] step = GetStep2();
+                for (int j = 0; j < 3; ++j)
+                    row.AddColumn(new ColumnTextRenderer(step[j], MyFonts.Consolas6, TextAlignments.Left, widths[j]));
+                doc.AddRow(row);
+            }
+            doc.Print();
         }
 
         private static void Test1()
@@ -75,10 +94,11 @@ namespace TestCode1
             string[] lorem_words = lorem_text.Split(' ');
             int index = 0;
             string lorem() => lorem_words[index++ % lorem_words.Length];
+            string lorem2() => lorem() + " " + lorem();
 
             for (int i = 0; i < 3; ++i)
             {
-                AddRowWithText(doc, lorem(), lorem(), lorem());
+                AddRowWithText(doc, lorem2(), lorem2(), lorem2());
             }
             doc.Print();
         }
@@ -103,9 +123,9 @@ namespace TestCode1
             ColumnTextRenderer c2 = row.AddTextColumn(text2, MyFonts.Consolas10);
             ColumnTextRenderer c3 = row.AddTextColumn(text3, MyFonts.Consolas10);
 
-            c1.Width = 150;
-            c2.Width = 150;
-            c3.Width = 150;
+            c1.Width = 200;
+            c2.Width = 200;
+            c3.Width = 200;
 
         }
     }

@@ -47,7 +47,6 @@ namespace PrintRenderer
             {
                 PrintController = new StandardPrintController()
             };
-
             Document.PrintPage += Document_PrintPage;
             _Rows = new RendererStack<RowRenderer>();
         }
@@ -61,17 +60,36 @@ namespace PrintRenderer
         private void Render(Graphics g, Rectangle bbox)
         {
             RowRenderer r = null;
-            Rectangle used_bbox = new Rectangle(bbox.X, bbox.Y, bbox.Width, bbox.Height);
-            while ((r = _Rows.GetNext()) != null)
+            Rectangle used_bbox = bbox;
+            RenderResult result = new RenderResult();
+
+            r = _Rows.GetNext();
+            if (r == null)
+                return; // nothing to render
+
+            // the render loop will normally loop forever if 
+            // a cell cannot be rendered because it won't fit,
+            // e.g. font size too large. By testing to see if the
+            // first row can fit on the page, we can bail if 
+            // we detect that the cell can't be rendered.
+            // This only needs to be checked at the start, 
+            // because an un-renderable row will fall through
+            // and always appear as the first row on the next
+            // loop. 
+
+            if (!r.CanBeginRender(g, ref bbox))
+                throw new PrintSizeException("Can't print: Cell cannot fit on page (probably font too large)");
+            
+            do
             {
-                r.Render(g, used_bbox);
+                r.Render(g, ref used_bbox, ref result);
                 if (r.MoreContentAvailable)
                 {
                     break;
                 }
-                used_bbox.Y += r.Height;
-                used_bbox.Height -= r.Height;
-            }
+                used_bbox.Y += result.BBox.Height;
+                used_bbox.Height -= result.BBox.Height;
+            } while ((r = _Rows.GetNext()) != null);
         }
 
         private void _ChoosePrinter(string printer_name)

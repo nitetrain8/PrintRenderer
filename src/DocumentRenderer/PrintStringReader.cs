@@ -94,12 +94,12 @@ namespace PrintRenderer
         {
             _ConsumeSpace();
 
-            int max_index = Math.Min(_string.Length, _pos + count);
+            int line_end = Math.Min(_string.Length, _pos + count);
             int start = _pos;
-            int end = max_index;
+            int end = line_end;
             int p;
 
-            for (p = _pos; p < max_index; ++p)
+            for (p = _pos; p < line_end; ++p)
             {
                 switch (_string[p])
                 {
@@ -124,6 +124,10 @@ namespace PrintRenderer
                         break;
                 }
             }
+            // if we hit EOF before running out of room,
+            // return the whole string
+            if (line_end == _string.Length)
+                end = p;
             _pos = end;
             return _ReadFrom(start, end);
         }

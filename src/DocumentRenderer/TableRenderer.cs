@@ -3,8 +3,6 @@ using System.Drawing;
 
 namespace PrintRenderer.TableRenderer
 {
-
-
     public enum TextAlignments
     {
         Left,
@@ -18,20 +16,6 @@ namespace PrintRenderer.TableRenderer
         public PrintStringReader Reader;
         public bool MoreContentAvailable => !Reader.EOF;
 
-        private int _Height;
-        public int Height
-        {
-            get
-            {
-                if (_Height == -1)
-                {
-                    throw new RenderSizeUnavailableException("Column not yet rendered");
-                }
-
-                return _Height;
-            }
-            private set => _Height = value;
-        }
         public int Width = 0;
 
         private readonly StringFormat _StringFormat = StringFormat.GenericTypographic;
@@ -49,12 +33,11 @@ namespace PrintRenderer.TableRenderer
             Font = font;
             Reader = new PrintStringReader(text);
             TextAlignment = alignment;
-            _Height = -1;
             Brush = Brushes.Black;
             Width = width;
         }
 
-        public bool CanBeginRender(Graphics g, Rectangle bbox)
+        public bool CanBeginRender(Graphics g, ref Rectangle bbox)
         {
             float min_height = Font.GetHeight(g);
             float min_width = _StringWidth(g, "a");
@@ -66,20 +49,17 @@ namespace PrintRenderer.TableRenderer
             return g.MeasureString(text, Font, 10000, _StringFormat).Width;
         }
 
-        public void Render(Graphics g, Rectangle bbox)
+        public void Render(Graphics g, ref Rectangle bbox, ref RenderResult result)
         {
             g.PageUnit = GraphicsUnit.Display;
             float char_width = _StringWidth(g, "a");
             float font_height = Font.GetHeight(g);
+            // reject font_height < bbox.Height here or infinite loop
             int line_width = (int)(bbox.Width / char_width);
-            if (line_width <= 0 || font_height > bbox.Height)
-            {
-                throw new PrintRendererException("BBox too small: can't print characters");
-            }
-            _InternalRender(g, bbox, char_width, font_height, line_width);
+            _InternalRender(g, ref bbox, char_width, font_height, line_width, ref result);
         }
 
-        private void _InternalRender(Graphics g, Rectangle bbox, float char_width, float font_height, int max_line)
+        private void _InternalRender(Graphics g, ref Rectangle bbox, float char_width, float font_height, int max_line, ref RenderResult result)
         {
             float y = bbox.Y;
             int remaining = (int)(bbox.Height / font_height);
@@ -96,8 +76,11 @@ namespace PrintRenderer.TableRenderer
                 g.DrawString(line, Font, Brush, x, y, _StringFormat);
                 y += font_height;
             }
-
-            Height = (int)Math.Ceiling(y - bbox.Y);
+            result.Complete = Reader.EOF;
+            result.BBox.X = bbox.X;
+            result.BBox.Y = bbox.Y;
+            result.BBox.Width = Width;
+            result.BBox.Height = (int)Math.Ceiling(y) - bbox.Y;
         }
 
         /// <summary>
@@ -146,76 +129,68 @@ namespace PrintRenderer.TableRenderer
 
     public class RowRenderer : IRenderer
     {
-        public bool MoreContentAvailable
-        {
-            get
-            {
-                foreach (var r in Columns.GetAll())
-                {
-                    if (r.MoreContentAvailable)
-                        return true;
-                }
-                return false;
-            }
-        }
-
-        public int Height
-        {
-            get
-            {
-                int mh = 0;
-                foreach (IRenderer r in Columns.GetAll())
-                {
-                    if (r.Height > mh)
-                    {
-                        mh = r.Height;
-                    }
-                }
-
-                return mh;
-            }
-        }
+        public bool MoreContentAvailable { get; private set; }
 
         public RendererStack<ColumnTextRenderer> Columns;
 
         public RowRenderer()
         {
             Columns = new RendererStack<ColumnTextRenderer>();
+            MoreContentAvailable = true;
         }
 
         public void AddColumn(ColumnTextRenderer column)
         {
             Columns.Add(column);
+            MoreContentAvailable = column.MoreContentAvailable;
         }
 
         public ColumnTextRenderer AddTextColumn(string text, Font font)
         {
             ColumnTextRenderer r = new ColumnTextRenderer(text, font);
-            Columns.Add(r);
+            AddColumn(r);
             return r;
         }
 
-        public bool CanBeginRender(Graphics g, Rectangle bbox)
+        public bool CanBeginRender(Graphics g, ref Rectangle bbox)
         {
-            foreach (IRenderer r in Columns.GetRemaining())
-            {
-                if (r.CanBeginRender(g, bbox))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        public void Render(Graphics g, Rectangle bbox)
-        {
-            var used_bbox = new Rectangle(bbox.X, bbox.Y, bbox.Width, bbox.Height);
             foreach (ColumnTextRenderer r in Columns.GetAll())
             {
-                r.Render(g, used_bbox);
+                if (!r.CanBeginRender(g, ref bbox))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public void Render(Graphics g, ref Rectangle bbox, ref RenderResult result)
+        {
+            var used_bbox = bbox;
+
+            bool more = false;
+            int height = 0;
+            int width = 0;
+
+            foreach (ColumnTextRenderer r in Columns.GetAll())
+            {
+                r.Render(g, ref used_bbox, ref result);
                 used_bbox.X += r.Width;
                 used_bbox.Width -= r.Width;
+
+                width += r.Width;
+                height += result.BBox.Height;
+
+                more = r.MoreContentAvailable;
             }
+
+            result.Complete = !more;
+            result.BBox.X = bbox.X;
+            result.BBox.Y = bbox.Y;
+            result.BBox.Width = width;
+            result.BBox.Height = height;
+            
+            MoreContentAvailable = more;
         }
     }
 }
