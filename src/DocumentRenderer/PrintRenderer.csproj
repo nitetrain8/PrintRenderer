@@ -34,6 +34,9 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.ValueTuple, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.ValueTuple.4.5.0\lib\net461\System.ValueTuple.dll</HintPath>
+    </Reference>
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -42,18 +45,24 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Components\Exceptions.cs" />
     <Compile Include="DocumentPrinter.cs" />
-    <Compile Include="PrintRenderer.cs" />
-    <Compile Include="PrintStringReader.cs" />
+    <Compile Include="Renderers\IRenderer.cs" />
+    <Compile Include="Components\PrintStringReader.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="RendererStack.cs" />
-    <Compile Include="TableRenderer.cs" />
+    <Compile Include="Renderers\TableRenderer.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\KnownFolders\KnownFolders.csproj">
       <Project>{7519b41a-5c36-4a31-9d91-4440f76d3f9c}</Project>
       <Name>KnownFolders</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Helpers\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -11,14 +11,59 @@ namespace TestCode1
     {
         public static readonly Font Consolas10 = new Font("Consolas", 10);
         public static readonly Font Consolas6 = new Font("Consolas", 6);
+        public static readonly Font Consolas20 = new Font("Consolas", 20);
     }
 
     internal class TestCode
     {
         private static void Main(string[] args)
         {
-            Test1();
-            Test2();
+            //Test1();
+            //Test2();
+            Test3();
+        }
+
+        private static void Test3()
+        {
+            const string file = "testcode2.pdf";
+            SimpleGridPrinter doc = CreatePDFPRinter(file);
+
+            int[] widths = new int[] { 50, 200, 350, 150 };
+
+            Func<string[]> GetStep2 = MakeStepGetter();
+
+            int i = -1;
+            int max_rows = 100;
+            CallbackRowRenderer row = new CallbackRowRenderer((row_renderer) =>
+            {
+                CellTextRenderer cell(int idx) { return row_renderer.Cells[idx] as CellTextRenderer; }
+                if (i++ >= max_rows)
+                {
+                    return false;
+                }
+                if (i == 0)
+                {
+                    cell(0).SetText("#", MyFonts.Consolas10);
+                    cell(1).SetText("Timestamp", MyFonts.Consolas10);
+                    cell(2).SetText("Step Text", MyFonts.Consolas10);
+                    cell(3).SetText("Step Type", MyFonts.Consolas10);
+                    return true;
+                }
+
+                var step = GetStep2();
+
+                cell(0).SetText(i.ToString(), MyFonts.Consolas6);
+                for (int j = 0; j < 3; ++j)
+                    cell(j+1).SetText(step[j], MyFonts.Consolas6);
+                return true;
+            });
+            doc.AddRow(new CellTextRenderer("Recipe Steps Report", MyFonts.Consolas20, TextAlignments.Center, 0));
+            doc.AddRow(new CellTextRenderer(" ", MyFonts.Consolas10)); // spacer
+            doc.AddRow(row);
+
+            for (int n = 0; n < 4; ++n)
+                row.AddCell(new CellTextRenderer("", MyFonts.Consolas6, TextAlignments.Left, widths[n]));
+            doc.Print();
         }
 
         private static void Test2()
@@ -26,13 +71,30 @@ namespace TestCode1
             const string file = "testcode2.pdf";
             SimpleGridPrinter doc = CreatePDFPRinter(file);
 
-            int[] widths = new int[] { 200, 400, 150 };
+            int[] widths = new int[] { 50, 200, 350, 150 };
 
+            Func<string[]> GetStep2 = MakeStepGetter();
+            for (int i = 0; i < 200; ++i)
+            {
+                RowRenderer row = new RowRenderer();
+                string[] step = GetStep2();
+                row.AddCell(new CellTextRenderer(i.ToString(), MyFonts.Consolas6, TextAlignments.Left, widths[0]));
+                for (int j = 0; j < 3; ++j)
+                {
+                    row.AddCell(new CellTextRenderer(step[j], MyFonts.Consolas6, TextAlignments.Left, widths[j + 1]));
+                }
+
+                doc.AddRow(row);
+            }
+            doc.Print();
+        }
+
+        private static Func<string[]> MakeStepGetter()
+        {
             Random rng = new Random();
             string[] step_types = new string[] { "Set", "Wait", "Wait Until" };
             string[] variables = new string[] { "AgPV(RPM)", "TempPV(C)", "DOO2FlowControllerRequestLimited(%)" };
             string[] ops = new string[] { "<", ">", "<=", ">=", "=", "!=" };
-
             string pick_one(string[] arr) => arr[rng.Next(0, arr.Length)];
             string step_type() => pick_one(step_types);
             string variable() => pick_one(variables);
@@ -47,7 +109,7 @@ namespace TestCode1
 
             string[] GetStep2()
             {
-                var step = GetStep();
+                string[] step = GetStep();
                 string tmp = step[0];
                 step[0] = step[1];
                 step[1] = tmp;
@@ -59,30 +121,22 @@ namespace TestCode1
                 string step = step_type();
                 if (step == "Set")
                 {
-                    return new string[3] { $"Set {variable()} to {(rng.NextDouble() * 30).ToString("F2")}", date(), "Set"};
+                    return new string[3] { $"Set {variable()} to {(rng.NextDouble() * 30).ToString("F2")}", date(), "Set" };
                 }
                 else if (step == "Wait")
                 {
-                    return new string[3] { $"Wait {rng.Next(10, 21)} seconds", date(), "Wait"};
+                    return new string[3] { $"Wait {rng.Next(10, 21)} seconds", date(), "Wait" };
                 }
                 else if (step == "Wait Until")
                 {
-                    return new string[3] { $"Wait Until {variable()} {op()} {(rng.NextDouble() * 30).ToString("F2")}", date(), "Wait Until"};
+                    return new string[3] { $"Wait Until {variable()} {op()} {(rng.NextDouble() * 30).ToString("F2")}", date(), "Wait Until" };
                 }
                 else
                 {
                     throw new Exception("oops");
                 }
             };
-            for (int i = 0; i < 1000; ++i)
-            {
-                var row = new RowRenderer();
-                string[] step = GetStep2();
-                for (int j = 0; j < 3; ++j)
-                    row.AddColumn(new ColumnTextRenderer(step[j], MyFonts.Consolas6, TextAlignments.Left, widths[j]));
-                doc.AddRow(row);
-            }
-            doc.Print();
+            return GetStep2;
         }
 
         private static void Test1()
@@ -118,10 +172,10 @@ namespace TestCode1
             RowRenderer row = new RowRenderer();
             printer.AddRow(row);
 
-            ColumnTextRenderer c1 = new ColumnTextRenderer(text1, MyFonts.Consolas10);
-            row.AddColumn(c1);
-            ColumnTextRenderer c2 = row.AddTextColumn(text2, MyFonts.Consolas10);
-            ColumnTextRenderer c3 = row.AddTextColumn(text3, MyFonts.Consolas10);
+            CellTextRenderer c1 = new CellTextRenderer(text1, MyFonts.Consolas10);
+            row.AddCell(c1);
+            CellTextRenderer c2 = row.AddTextColumn(text2, MyFonts.Consolas10);
+            CellTextRenderer c3 = row.AddTextColumn(text3, MyFonts.Consolas10);
 
             c1.Width = 200;
             c2.Width = 200;
