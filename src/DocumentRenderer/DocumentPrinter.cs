@@ -48,20 +48,7 @@ namespace PrintRenderer
             Document.PrintPage += OnPagePrint;
             _Renderers = new List<IRenderer>();
             _CurrentIndex = 0;
-        }
-
-        private void Document_PrintPage(object sender, PrintPageEventArgs ev)
-        {
-            bool more = RenderPage(ev.Graphics, ev.MarginBounds);
-            ev.HasMorePages = more;
-        }
-
-        private void _ThrowIfCannotRender(IRenderer r, Graphics g, ref Rectangle page_area)
-        {
-            if (!r.CanBeginRender(g, ref page_area))
-            {
-                throw new Exceptions.DoesNotFitOnPageException($"{r.ToString()} too large. Required: {page_area.ToString()}");
-            }
+            _ChoosePrinter(printer_name);
         }
 
         private void OnPagePrint(object sender, PrintPageEventArgs ev)
@@ -120,56 +107,16 @@ namespace PrintRenderer
                 throw new Exceptions.DoesNotFitOnPageException($"{r.ToString()}");
         }
 
-        //private void RenderPage(Graphics g, Rectangle bbox)
-        //{
-        //    RowRenderer r = null;
-        //    Rectangle used_bbox = bbox;
-        //    RenderResult result = new RenderResult();
-
-        //    r = _Rows.GetNext();
-        //    if (r == null)
-        //    {
-        //        return; // nothing to render
-        //    }
-
-        //    // the render loop will normally loop forever if 
-        //    // a cell cannot be rendered because it won't fit,
-        //    // e.g. font size too large. By testing to see if the
-        //    // first row can fit on the page, we can bail if 
-        //    // we detect that the cell can't be rendered.
-        //    // This only needs to be checked at the start, 
-        //    // because an un-renderable row will fall through
-        //    // and always appear as the first row on the next
-        //    // loop. 
-
-        //    if (!r.CanBeginRender(g, ref bbox))
-        //    {
-        //        throw new PrintSizeException("Can't print: Cell cannot fit on page (probably font too large)");
-        //    }
-
-        //    do
-        //    {
-        //        r.Render(g, ref used_bbox, ref result);
-        //        if (r.MoreContentAvailable)
-        //        {
-        //            break;
-        //        }
-        //        used_bbox.Y += result.BBox.Height;
-        //        used_bbox.Height -= result.BBox.Height;
-        //    } while ((r = _Rows.GetNext()) != null);
-        //}
-
         private void _ChoosePrinter(string printer_name)
         {
             if (string.IsNullOrWhiteSpace(printer_name))
             {
                 return; // default printer
             }
-
-            // verify printer exists
+            var lower_name = printer_name.ToLower();
             foreach (string name in PrinterSettings.InstalledPrinters)
             {
-                if (name == printer_name)
+                if (name.ToLower() == lower_name)
                 {
                     Document.PrinterSettings.PrinterName = name;
                     return;

@@ -2,7 +2,9 @@
 using PrintRenderer.TableRenderer;
 using System;
 using System.Drawing;
+using System.Drawing.Printing;
 using System.IO;
+using System.Printing;
 
 namespace TestCode1
 {
@@ -14,19 +16,23 @@ namespace TestCode1
         public static readonly Font Consolas20 = new Font("Consolas", 20);
     }
 
-    internal class TestCode
+    internal class TestCode1
     {
         private static void Main(string[] args)
         {
             //Test1();
             //Test2();
-            Test3();
-        }
-
-        private static void Test3()
-        {
             const string file = "testcode2.pdf";
             SimpleGridPrinter doc = CreatePDFPRinter(file);
+            Test3(doc);
+           
+            //var doc = new SimpleGridPrinter("Xerox VersaLink C405 Biolab Bullpen");
+            //Test3(doc);
+        }
+
+        private static void Test3(SimpleGridPrinter doc)
+        {
+
 
             int[] widths = new int[] { 50, 200, 350, 150 };
 
@@ -57,12 +63,12 @@ namespace TestCode1
                     cell(j+1).SetText(step[j], MyFonts.Consolas6);
                 return true;
             });
-            doc.AddRow(new CellTextRenderer("Recipe Steps Report", MyFonts.Consolas20, TextAlignments.Center, 0));
+            doc.AddRow(new CellTextRenderer("Recipe Steps Report", MyFonts.Consolas20, Alignment.Center, 0));
             doc.AddRow(new CellTextRenderer(" ", MyFonts.Consolas10)); // spacer
             doc.AddRow(row);
 
             for (int n = 0; n < 4; ++n)
-                row.AddCell(new CellTextRenderer("", MyFonts.Consolas6, TextAlignments.Left, widths[n]));
+                row.AddCell(new CellTextRenderer("", MyFonts.Consolas6, Alignment.Left, widths[n]));
             doc.Print();
         }
 
@@ -78,10 +84,10 @@ namespace TestCode1
             {
                 RowRenderer row = new RowRenderer();
                 string[] step = GetStep2();
-                row.AddCell(new CellTextRenderer(i.ToString(), MyFonts.Consolas6, TextAlignments.Left, widths[0]));
+                row.AddCell(new CellTextRenderer(i.ToString(), MyFonts.Consolas6, Alignment.Left, widths[0]));
                 for (int j = 0; j < 3; ++j)
                 {
-                    row.AddCell(new CellTextRenderer(step[j], MyFonts.Consolas6, TextAlignments.Left, widths[j + 1]));
+                    row.AddCell(new CellTextRenderer(step[j], MyFonts.Consolas6, Alignment.Left, widths[j + 1]));
                 }
 
                 doc.AddRow(row);

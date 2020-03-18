@@ -4,10 +4,10 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{8F52D613-8635-4350-BEF5-5B11095E7664}</ProjectGuid>
+    <ProjectGuid>{77AF748A-47BE-4D01-84E4-10B51961F186}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>TestCode1</RootNamespace>
-    <AssemblyName>TestCode1</AssemblyName>
+    <RootNamespace>TestCode2</RootNamespace>
+    <AssemblyName>TestCode2</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -18,27 +18,30 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\..\artifacts\TestCode1\Debug\</OutputPath>
+    <OutputPath>..\..\artifacts\TestCode2\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <DocumentationFile>..\..\artifacts\TestCode1\Debug\TestCode1.xml</DocumentationFile>
+    <DocumentationFile>..\..\artifacts\TestCode2\Debug\TestCode2.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>..\..\artifacts\TestCode1\Release\</OutputPath>
+    <OutputPath>..\..\artifacts\TestCode2\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <DocumentationFile>..\..\artifacts\TestCode1\Release\TestCode1.xml</DocumentationFile>
+    <DocumentationFile>..\..\artifacts\TestCode2\Release\TestCode2.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="CommandLine, Version=2.7.82.0, Culture=neutral, PublicKeyToken=5a870481e358d379, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\CommandLineParser.2.7.82\lib\net461\CommandLine.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
-    <Reference Include="System.Printing" />
+    <Reference Include="System.Management" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -47,20 +50,17 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="TestCode1.cs" />
+    <Compile Include="TestCode2.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\DocumentRenderer\PrintRenderer.csproj">
-      <Project>{b30e0dc5-3261-4ac9-941e-896097c72a98}</Project>
+    <ProjectReference Include="..\DocumentRenderer\PrintRenderer.csproj">
+      <Project>{B30E0DC5-3261-4AC9-941E-896097C72A98}</Project>
       <Name>PrintRenderer</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\src\KnownFolders\KnownFolders.csproj">
-      <Project>{7519b41a-5c36-4a31-9d91-4440f76d3f9c}</Project>
-      <Name>KnownFolders</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

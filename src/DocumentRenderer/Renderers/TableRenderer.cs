@@ -4,7 +4,7 @@ using System.Drawing;
 
 namespace PrintRenderer.TableRenderer
 {
-    public enum TextAlignments
+    public enum Alignment
     {
         Left,
         Right,
@@ -17,11 +17,29 @@ namespace PrintRenderer.TableRenderer
         bool RenderComplete { get; }
     }
 
+    public struct Border
+    {
+        public bool Use;
+        public Border(bool use = true)
+        {
+            Use = use;
+        }
+    }
+
+    public struct Margin
+    {
+        public int Top;
+        public int Left;
+        public int Right;
+        public int Bottom;
+    }
+
     public class CellTextRenderer : ICellRenderer
     {
         public Font Font;
         public Brush Brush;
-        public TextAlignments TextAlignment;
+        public Alignment TextAlignment;
+        public Border Border;
 
         public bool RenderComplete => Reader.EOF;
         public Rectangle LastRenderArea => _LastRenderArea;
@@ -33,18 +51,19 @@ namespace PrintRenderer.TableRenderer
         private readonly StringFormat _StringFormat = StringFormat.GenericTypographic;
 
         public CellTextRenderer(string text, Font font = null,
-                                TextAlignments alignment = TextAlignments.Left, int width = 10)
+                                Alignment alignment = Alignment.Left, int width = 10)
         {
             _Init(text, font ?? SystemFonts.DefaultFont, alignment, width);
         }
 
-        private void _Init(string text, Font font, TextAlignments alignment, int width)
+        private void _Init(string text, Font font, Alignment alignment, int width)
         {
             Font = font;
             Reader = new PrintStringReader(text);
             TextAlignment = alignment;
             Brush = Brushes.Black;
             Width = width;
+            Border = new Border(false);
         }
 
         public void SetText(string text)
@@ -52,7 +71,7 @@ namespace PrintRenderer.TableRenderer
             Reader.Set(text);
         }
 
-        public void SetText(string text, TextAlignments alignment)
+        public void SetText(string text, Alignment alignment)
         {
             Reader.Set(text);
             TextAlignment = alignment;
@@ -103,10 +122,18 @@ namespace PrintRenderer.TableRenderer
                 g.DrawString(line, Font, Brush, x, y, _StringFormat);
                 y += font_height;
             }
+
+            // calculate the rendered area
             _LastRenderArea.X = bbox.X;
             _LastRenderArea.Y = bbox.Y;
             _LastRenderArea.Width = Width;
             _LastRenderArea.Height = (int)Math.Ceiling(y) - bbox.Y;
+
+            if (Border.Use)
+            {
+                g.DrawRectangle(Pens.Black, _LastRenderArea);
+            }
+
             return Reader.EOF ? RenderResult.Done : RenderResult.Incomplete;
         }
 
@@ -116,15 +143,15 @@ namespace PrintRenderer.TableRenderer
         /// </summary>
         /// <param name="width">Line width</param>
         /// <returns></returns>
-        private float _CalcTextPosition(float width, Rectangle bbox, TextAlignments alignment)
+        private float _CalcTextPosition(float width, Rectangle bbox, Alignment alignment)
         {
             switch (alignment)
             {
-                case TextAlignments.Left:
+                case Alignment.Left:
                     return bbox.Left;
-                case TextAlignments.Right:
+                case Alignment.Right:
                     return bbox.Right - width;
-                case TextAlignments.Center:
+                case Alignment.Center:
                     int middle = (bbox.Right + bbox.Left) / 2;
                     return middle - width / 2;
                 default:
@@ -134,12 +161,12 @@ namespace PrintRenderer.TableRenderer
         }
     }
 
-    public class RowRenderer : IRenderer
+
+    public partial class RowRenderer : IRenderer
     {
         public List<ICellRenderer> Cells;
         public Rectangle LastRenderArea => _LastRenderArea;
-
-        protected Rectangle _LastRenderArea;
+        public Alignment Alignment;
 
         public RowRenderer()
         {
@@ -160,12 +187,18 @@ namespace PrintRenderer.TableRenderer
 
         public bool CanBeginRender(Graphics g, ref Rectangle bbox)
         {
-            foreach (ICellRenderer r in Cells)
+            var cell_bbox = bbox;
+            ICellRenderer r;
+            int n = Cells.Count;
+            for (int i = 0; i < n; ++i)
             {
-                if (!r.CanBeginRender(g, ref bbox))
+                r = Cells[i];
+                cell_bbox.Width = r.Width;
+                if (!r.CanBeginRender(g, ref cell_bbox))
                 {
                     return false;
                 }
+                cell_bbox.X += r.Width;
             }
             return true;
         }
@@ -173,14 +206,20 @@ namespace PrintRenderer.TableRenderer
         public virtual RenderResult Render(Graphics g, ref Rectangle bbox)
         {
             Rectangle available_bbox = bbox;
+            _AdjustBBoxForAlignment(ref available_bbox);
+            Rectangle original_bbox = available_bbox; 
 
             bool more = false;
             RenderResult result;
             int height = 0;
             int width = 0;
 
-            foreach (ICellRenderer r in Cells)
+            ICellRenderer r;
+            int n = Cells.Count;
+
+            for (int i = 0; i < n; ++i)
             {
+                r = Cells[i];
                 // Set available width to the Column's assigned width
                 // before rendering. After rendering, move the X coordinate
                 // of the available BBox by the consumed width. 
@@ -196,20 +235,65 @@ namespace PrintRenderer.TableRenderer
                 {
                     result = RenderResult.Done;
                 }
-                available_bbox.X += r.Width;
 
+                available_bbox.X += r.Width;
                 width += r.Width;
                 height = Math.Max(r.LastRenderArea.Height, height);
 
                 more = more || result == RenderResult.Incomplete;
             }
 
-            _LastRenderArea.X = bbox.X;
-            _LastRenderArea.Y = bbox.Y;
+            _LastRenderArea.X = original_bbox.X;
+            _LastRenderArea.Y = original_bbox.Y;
             _LastRenderArea.Width = width;
             _LastRenderArea.Height = height;
 
             return more ? RenderResult.Incomplete : RenderResult.Done;
+        }
+    }
+
+    /// <summary>
+    /// Private, protected, and internal methods.
+    /// </summary>
+    public partial class RowRenderer
+    {
+        private protected Rectangle _LastRenderArea;
+
+        private protected int _GetWidth()
+        {
+            int w = 0;
+            int n = Cells.Count;
+            for (int i = 0; i < n; ++i)
+            {
+                w += Cells[i].Width;
+            }
+
+            return w;
+        }
+
+        private void _AdjustBBoxForAlignment(ref Rectangle row_bbox)
+        {
+            int w, diff;
+            switch (Alignment)
+            {
+                case Alignment.Left:
+                    // default
+                    break;
+                case Alignment.Right:
+                    // move everything to the right so the last cell
+                    // is touching the BBox right edge. 
+                    w = _GetWidth();
+                    diff = row_bbox.Width - w;
+                    row_bbox.X += diff;
+                    row_bbox.Width -= diff;
+                    break;
+                case Alignment.Center:
+                    w = _GetWidth();
+                    diff = row_bbox.Width - w;
+                    row_bbox.X += diff / 2;
+                    row_bbox.Width -= diff / 2;
+                    break;
+            }
         }
     }
 
