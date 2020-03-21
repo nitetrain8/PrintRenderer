@@ -5,6 +5,8 @@ using System.Drawing;
 using System.Drawing.Printing;
 using System.IO;
 using System.Printing;
+using System.Data;
+using ADODB;
 
 namespace TestCode1
 {
@@ -18,7 +20,18 @@ namespace TestCode1
 
     internal class TestCode1
     {
+
         private static void Main(string[] args)
+        {
+            Console.WriteLine("nothing to see here....");
+            var printer = new ReportPrinter.RecipeStepsReportPrinter();
+            printer.Printer.Document.PrinterSettings.PrinterName = "Microsoft Print to PDF";
+            printer.Printer.Document.PrinterSettings.PrintToFile = true;
+            printer.Printer.Document.PrinterSettings.PrintFileName = Path.Combine(KnownFolders.Downloads, "hmm.pdf");
+            printer.Print();
+        }
+
+        private static void Main1(string[] args)
         {
             //Test1();
             //Test2();

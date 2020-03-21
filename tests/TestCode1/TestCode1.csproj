@@ -35,6 +35,9 @@
     <DocumentationFile>..\..\artifacts\TestCode1\Release\TestCode1.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="adodb, Version=7.0.3300.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
@@ -61,6 +64,10 @@
     <ProjectReference Include="..\..\src\KnownFolders\KnownFolders.csproj">
       <Project>{7519b41a-5c36-4a31-9d91-4440f76d3f9c}</Project>
       <Name>KnownFolders</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\ReportPrinter\ReportPrinter.csproj">
+      <Project>{3469379d-d72f-411e-a902-4d21dde6a945}</Project>
+      <Name>ReportPrinter</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

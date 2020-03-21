@@ -164,6 +164,9 @@ namespace PrintRenderer.TableRenderer
 
     public partial class RowRenderer : IRenderer
     {
+        /// <summary>
+        /// Collection of cells to render for this row
+        /// </summary>
         public List<ICellRenderer> Cells;
         public Rectangle LastRenderArea => _LastRenderArea;
         public Alignment Alignment;
@@ -257,7 +260,11 @@ namespace PrintRenderer.TableRenderer
     /// </summary>
     public partial class RowRenderer
     {
-        private protected Rectangle _LastRenderArea;
+
+        /// <summary>
+        /// BBox containing dimensions of the last render operation.
+        /// </summary>
+        protected Rectangle _LastRenderArea;
 
         private protected int _GetWidth()
         {
@@ -322,6 +329,9 @@ namespace PrintRenderer.TableRenderer
             {
                 if (_GetMoreData)
                 {
+                    // currently results in an extra page being printed if the 
+                    // callback renderer is the last renderer, and the last row 
+                    // is the last to fit on a page. 
                     bool have_data = UpdateRow(this);
                     if (!have_data)
                     {
