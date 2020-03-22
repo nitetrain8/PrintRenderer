@@ -2,6 +2,9 @@
 
 namespace PrintRenderer
 {
+    /// <summary>
+    /// Stream-like class that performs reads in line-based chunks.
+    /// </summary>
     public class PrintStringReader
     {
         /// <summary>
@@ -39,6 +42,15 @@ namespace PrintRenderer
         {
             _pos = 0;
             _string = string.IsNullOrEmpty(text) ? "" : text;
+        }
+
+        /// <summary>
+        /// Gets the complete internal string owned by this reader.
+        /// </summary>
+        /// <returns>Text string.</returns>
+        public string Get()
+        {
+            return _string;
         }
 
         /// <summary>

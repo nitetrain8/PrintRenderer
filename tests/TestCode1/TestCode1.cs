@@ -21,7 +21,14 @@ namespace TestCode1
     internal class TestCode1
     {
 
-        private static void Main(string[] args)
+        public static int Main(string[] args)
+        {
+            Test4();
+            //AcroPDFLib.
+            return 0;
+        }
+
+        private static void Test4()
         {
             Console.WriteLine("nothing to see here....");
             var printer = new ReportPrinter.RecipeStepsReportPrinter();
@@ -55,7 +62,7 @@ namespace TestCode1
             int max_rows = 100;
             CallbackRowRenderer row = new CallbackRowRenderer((row_renderer) =>
             {
-                CellTextRenderer cell(int idx) { return row_renderer.Cells[idx] as CellTextRenderer; }
+                TextCell cell(int idx) { return row_renderer.Cells[idx] as TextCell; }
                 if (i++ >= max_rows)
                 {
                     return false;
@@ -76,12 +83,12 @@ namespace TestCode1
                     cell(j+1).SetText(step[j], MyFonts.Consolas6);
                 return true;
             });
-            doc.AddRow(new CellTextRenderer("Recipe Steps Report", MyFonts.Consolas20, Alignment.Center, 0));
-            doc.AddRow(new CellTextRenderer(" ", MyFonts.Consolas10)); // spacer
+            doc.AddRow(new TextCell("Recipe Steps Report", MyFonts.Consolas20, Alignment.Center, 0));
+            doc.AddRow(new TextCell(" ", MyFonts.Consolas10)); // spacer
             doc.AddRow(row);
 
             for (int n = 0; n < 4; ++n)
-                row.AddCell(new CellTextRenderer("", MyFonts.Consolas6, Alignment.Left, widths[n]));
+                row.AddCell(new TextCell("", MyFonts.Consolas6, Alignment.Left, widths[n]));
             doc.Print();
         }
 
@@ -97,10 +104,10 @@ namespace TestCode1
             {
                 RowRenderer row = new RowRenderer();
                 string[] step = GetStep2();
-                row.AddCell(new CellTextRenderer(i.ToString(), MyFonts.Consolas6, Alignment.Left, widths[0]));
+                row.AddCell(new TextCell(i.ToString(), MyFonts.Consolas6, Alignment.Left, widths[0]));
                 for (int j = 0; j < 3; ++j)
                 {
-                    row.AddCell(new CellTextRenderer(step[j], MyFonts.Consolas6, Alignment.Left, widths[j + 1]));
+                    row.AddCell(new TextCell(step[j], MyFonts.Consolas6, Alignment.Left, widths[j + 1]));
                 }
 
                 doc.AddRow(row);
@@ -191,10 +198,10 @@ namespace TestCode1
             RowRenderer row = new RowRenderer();
             printer.AddRow(row);
 
-            CellTextRenderer c1 = new CellTextRenderer(text1, MyFonts.Consolas10);
+            TextCell c1 = new TextCell(text1, MyFonts.Consolas10);
             row.AddCell(c1);
-            CellTextRenderer c2 = row.AddTextColumn(text2, MyFonts.Consolas10);
-            CellTextRenderer c3 = row.AddTextColumn(text3, MyFonts.Consolas10);
+            TextCell c2 = row.AddTextCell(text2, MyFonts.Consolas10);
+            TextCell c3 = row.AddTextCell(text3, MyFonts.Consolas10);
 
             c1.Width = 200;
             c2.Width = 200;

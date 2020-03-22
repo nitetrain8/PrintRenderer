@@ -22,10 +22,11 @@ namespace ReportPrinter
 
     internal class SingleCellRowRenderer : RowRenderer
     {
-        private CellTextRenderer MyCell;
+        private TextCell MyCell;
         public SingleCellRowRenderer(string text="", Font font=null, Alignment alignment=Alignment.Left) : base()
         {
-            MyCell = new CellTextRenderer(text, font, alignment, 650);
+            Alignment = alignment;
+            MyCell = new TextCell(text, font, alignment, 650);
             Cells.Add(MyCell);
         }
         public void SetText(string text, Font font)
@@ -56,7 +57,7 @@ namespace ReportPrinter
         {
             for (int i = 0; i < headers.Length; ++i)
             {
-                var cell = new CellTextRenderer(headers[i], font, Alignment.Left);
+                var cell = new TextCell(headers[i], font, Alignment.Left);
                 AddCell(cell);
             }
         }
@@ -71,17 +72,17 @@ namespace ReportPrinter
 
     internal class RecipeStepRecord
     {
-        CellTextRenderer StepNum;
-        CellTextRenderer Timestamp;
-        CellTextRenderer Step;
-        CellTextRenderer StepType;
+        TextCell StepNum;
+        TextCell Timestamp;
+        TextCell Step;
+        TextCell StepType;
 
         public RecipeStepRecord()
         {
-            StepNum = new CellTextRenderer("", ReportFonts.RecordFont);
-            Timestamp = new CellTextRenderer("", ReportFonts.RecordFont);
-            Step = new CellTextRenderer("", ReportFonts.RecordFont);
-            StepType = new CellTextRenderer("", ReportFonts.RecordFont);
+            StepNum = new TextCell("", ReportFonts.RecordFont);
+            Timestamp = new TextCell("", ReportFonts.RecordFont);
+            Step = new TextCell("", ReportFonts.RecordFont);
+            StepType = new TextCell("", ReportFonts.RecordFont);
         }
         public void SetWidths(int[] widths)
         {
@@ -138,7 +139,7 @@ namespace ReportPrinter
         {
             Printer = p;
 
-            int[] widths = new int[] { 50, 200, 350, 150 };
+            int[] widths = new int[] { 50, 200, 300, 150 };
 
             _title = new ReportTitle("Recipe Steps Report");
             _metadata = new ReportMetadata("Batch name: \"test\"");
@@ -152,6 +153,9 @@ namespace ReportPrinter
             p.AddRow(_metadata);
             p.AddRow(_headers);
             p.AddRow(_recordRow);
+
+            _metadata.Margin.Top = 25;
+            _metadata.Margin.Bottom = 25;
 
             _headers.SetWidths(widths);
             _record.SetWidths(widths);

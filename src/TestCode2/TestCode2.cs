@@ -92,7 +92,7 @@ namespace TestCode2
             int max_rows = 100;
             CallbackRowRenderer row = new CallbackRowRenderer((row_renderer) =>
             {
-                CellTextRenderer cell(int idx) { return row_renderer.Cells[idx] as CellTextRenderer; }
+                TextCell cell(int idx) { return row_renderer.Cells[idx] as TextCell; }
                 if (i++ >= max_rows)
                 {
                     return false;
@@ -116,13 +116,13 @@ namespace TestCode2
 
                 return true;
             });
-            doc.AddRow(new CellTextRenderer("Recipe Steps Report", MyFonts.Consolas20, Alignment.Center, 0));
-            doc.AddRow(new CellTextRenderer(" ", MyFonts.Consolas10)); // spacer
+            doc.AddRow(new TextCell("Recipe Steps Report", MyFonts.Consolas20, Alignment.Center, 0));
+            doc.AddRow(new TextCell(" ", MyFonts.Consolas10)); // spacer
             doc.AddRow(row);
 
             for (int n = 0; n < 4; ++n)
             {
-                row.AddCell(new CellTextRenderer("", MyFonts.Consolas6, Alignment.Left, widths[n]));
+                row.AddCell(new TextCell("", MyFonts.Consolas6, Alignment.Left, widths[n]));
             }
 
             doc.Print();
