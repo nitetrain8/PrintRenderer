@@ -102,7 +102,7 @@ namespace TestCode1
             Func<string[]> GetStep2 = MakeStepGetter();
             for (int i = 0; i < 200; ++i)
             {
-                RowRenderer row = new RowRenderer();
+                Row row = new Row();
                 string[] step = GetStep2();
                 row.AddCell(new TextCell(i.ToString(), MyFonts.Consolas6, Alignment.Left, widths[0]));
                 for (int j = 0; j < 3; ++j)
@@ -195,7 +195,7 @@ namespace TestCode1
 
         private static void AddRowWithText(SimpleGridPrinter printer, string text1, string text2, string text3)
         {
-            RowRenderer row = new RowRenderer();
+            Row row = new Row();
             printer.AddRow(row);
 
             TextCell c1 = new TextCell(text1, MyFonts.Consolas10);

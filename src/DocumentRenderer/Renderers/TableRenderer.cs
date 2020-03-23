@@ -1,119 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
 
 
 namespace PrintRenderer.TableRenderer
 {
-
-    /// <summary>
-    /// Content alignment enum.
-    /// </summary>
-    public enum Alignment
-    {
-        /// <summary>
-        /// Left aligned.
-        /// </summary>
-        Left,
-
-        /// <summary>
-        /// Right aligned.
-        /// </summary>
-        Right,
-
-        /// <summary>
-        /// Center aligned
-        /// </summary>
-        Center
-    }
-
-    /// <summary>
-    /// Represents a single border line (top, left, right, etc).
-    /// </summary>
-    public struct BorderSegment
-    {
-        /// <summary>
-        /// Brush to use. 
-        /// </summary>
-        public Brush Brush;
-
-        /// <summary>
-        /// Line thickness.
-        /// </summary>
-        public int Thickness;
-
-        /// <summary>
-        /// Whether to show the border. 
-        /// </summary>
-        public bool Show;
-    }
-
-    /// <summary>
-    /// Represents the borders of a bounding box.
-    /// </summary>
-    public class Borders
-    {
-        /// <summary>
-        /// Top border segment.
-        /// </summary>
-        public BorderSegment Top;
-
-        /// <summary>
-        /// Left border segment.
-        /// </summary>
-        public BorderSegment Left;
-
-        /// <summary>
-        /// Right border segment.
-        /// </summary>
-        public BorderSegment Right;
-
-        /// <summary>
-        /// Bottom border segment.
-        /// </summary>
-        public BorderSegment Bottom;
-    }
-
-    /// <summary>
-    /// Dimensions of edges of a box, for margin or padding.
-    /// </summary>
-    public struct EdgeSizes
-    {
-        /// <summary>
-        /// Top edge thickness.
-        /// </summary>
-        public int Top;
-
-        /// <summary>
-        /// Bottom edge thickness.
-        /// </summary>
-        public int Left;
-
-        /// <summary>
-        /// Right edge thickness. 
-        /// </summary>
-        public int Right;
-
-        /// <summary>
-        /// Bottom edge thickness.
-        /// </summary>
-        public int Bottom;
-        
-        /// <summary>
-        /// Initialize a new EdgeSizes structure
-        /// </summary>
-        /// <param name="left">Left edge.</param>
-        /// <param name="right">Right edge.</param>
-        /// <param name="top">Top edge.</param>
-        /// <param name="bottom">Bottom edge.</param>
-        public EdgeSizes(int left=0, int right=0, int top=0, int bottom=0)
-        {
-            Top = top;
-            Left = left;
-            Right = right;
-            Bottom = bottom;
-        }
-    }
 
     internal class InternalUtil
     {
@@ -121,87 +11,13 @@ namespace PrintRenderer.TableRenderer
         public static Font DefaultFont = new Font("Consolas", 10);
         public static Brush DefaultBrush = Brushes.Black;
 
-        /// <summary>
-        /// Calculate the X coordinate to draw the provided line 
-        /// based on the current TextPosition setting. 
-        /// </summary>
-        /// <param name="width">Line width.</param>
-        /// <param name="bbox">Bounding box.</param>
-        /// <param name="alignment">Text alignment.</param>
-        /// <returns></returns>
-        public static float CalcXPosition(float width, ref Rectangle bbox, Alignment alignment)
-        {
-            switch (alignment)
-            {
-                case Alignment.Left:
-                    return bbox.Left;
-                case Alignment.Right:
-                    return bbox.Right - width;
-                case Alignment.Center:
-                    int middle = (bbox.Right + bbox.Left) / 2;
-                    return middle - width / 2;
-                default:
-                    break;
-            }
-            // just in case anything changes
-            throw new NotImplementedException($"TextPosition: {alignment.ToString()}");
-        }
-
-        public static void AdjustBBoxForPaddingAndMargin(ref Rectangle bbox, EdgeSizes margin, EdgeSizes padding, out int width, out int height)
-        {
-            // padding and margin are the same from a mathematical point of view
-            // when adjusting the bbox.
-            int left = margin.Left + padding.Left;
-            int right = margin.Right + padding.Right;
-            int top = margin.Top + padding.Top;
-            int bottom = margin.Bottom + padding.Bottom;
-
-            height = top + bottom;
-            width = left + right;
-
-            bbox.X += left;
-            bbox.Width = bbox.Width - width;
-            bbox.Y += top;
-            bbox.Height = bbox.Height - height;
-        }
-
-        /// <summary>
-        /// Adjusts the X and Width fields of the provided bbox
-        /// to satisfy the provided alignment.
-        /// </summary>
-        /// <param name="bbox">Available bbox</param>
-        /// <param name="w">Width of the container</param>
-        /// <param name="alignment">Alignment</param>
-        static public void AdjustBBoxForAlignment(ref Rectangle bbox, int w, Alignment alignment)
-        {
-            int diff;
-            switch (alignment)
-            {
-                case Alignment.Left:
-                    // default
-                    break;
-                case Alignment.Right:
-                    // move everything to the right so the last cell
-                    // is touching the BBox right edge. 
-                    diff = bbox.Width - w;
-                    bbox.X += diff;
-                    bbox.Width -= diff;
-                    break;
-                case Alignment.Center:
-                    diff = bbox.Width - w;
-                    bbox.X += diff / 2;
-                    bbox.Width -= diff / 2;
-                    break;
-            }
-        }
     }
 
     /// <summary>
     /// Base class for the raw content.
     /// </summary>
-    public class Content
+    abstract public class Content : RenderableElement
     {
-
     }
 
     /// <summary>
@@ -222,17 +38,15 @@ namespace PrintRenderer.TableRenderer
         /// <summary>
         /// Get or set the text rendered.
         /// </summary>
-        public string Text { get => Reader.Get(); set => Reader.Set(value); }
-
-        /// <summary>
-        /// Alignment of text (left, right, center).
-        /// </summary>
-        public Alignment Alignment;
-
-        /// <summary>
-        /// Represents the last render area. 
-        /// </summary>
-        public Rectangle LastRenderArea;
+        public string Text
+        {
+            get => Reader.Get();
+            set
+            {
+                LastResult = RenderStatus.None;
+                Reader.Set(value);
+            }
+        }
 
         /// <summary>
         /// Create a new TextContent with the given text and font.
@@ -269,12 +83,12 @@ namespace PrintRenderer.TableRenderer
         /// <param name="g">Graphics object</param>
         /// <param name="bbox">Bounding box.</param>
         /// <returns>Result of the render operation.</returns>
-        public RenderResult Render(Graphics g, Rectangle bbox)
+        override public RenderStatus Render(Graphics g, ref Rectangle bbox)
         {
             g.PageUnit = GraphicsUnit.Display;
-            float char_width = _StringWidth(g, "a");
-            float font_height = Font.GetHeight(g);
-            int line_width = (int)(bbox.Width / char_width);
+            var char_width = _StringWidth(g, "a");
+            var font_height = Font.GetHeight(g);
+            var line_width = (int)(bbox.Width / char_width);
             return _InternalRender(g, ref bbox, char_width, font_height, line_width);
         }
 
@@ -285,11 +99,11 @@ namespace PrintRenderer.TableRenderer
         /// <param name="g">Graphics object</param>
         /// <param name="bbox">Bounding box.</param>
         /// <returns>True if the cell can be partially rendered, else false.</returns>
-        public bool CanBeginRender(Graphics g, ref Rectangle bbox)
+        override public bool CanBeginRender(Graphics g, ref Rectangle bbox)
         {
             //SizeF size = g.MeasureString("a", Font, 10000, _StringFormat);
-            float min_height = Font.GetHeight(g);
-            float min_width = _StringWidth(g, "a");
+            var min_height = Font.GetHeight(g);
+            var min_width = _StringWidth(g, "a");
             return (min_height <= bbox.Height) && (min_width <= bbox.Width);
         }
     }
@@ -308,12 +122,10 @@ namespace PrintRenderer.TableRenderer
             return g.MeasureString(text, Font, 10000, InternalUtil.StringFormat).Width;
         }
 
-
-
-        private RenderResult _InternalRender(Graphics g, ref Rectangle bbox, float char_width, float font_height, int max_line)
+        private RenderStatus _InternalRender(Graphics g, ref Rectangle bbox, float char_width, float font_height, int max_line)
         {
             float y = bbox.Y;
-            int remaining = (int)(bbox.Height / font_height);
+            var remaining = (int)(bbox.Height / font_height);
 
             string line;
             float x;
@@ -323,7 +135,7 @@ namespace PrintRenderer.TableRenderer
             {
                 line = Reader.Read(max_line);
                 line_width = _StringWidth(g, line);
-                x = InternalUtil.CalcXPosition(line_width, ref bbox, Alignment);
+                x = RenderMethods.CalcXPosition(line_width, ref bbox, Alignment);
                 g.DrawString(line, Font, Brush, x, y, InternalUtil.StringFormat);
                 y += font_height;
             }
@@ -333,43 +145,26 @@ namespace PrintRenderer.TableRenderer
             LastRenderArea.Y = bbox.Y;
             LastRenderArea.Width = (int)Math.Ceiling(char_width * max_line);
             LastRenderArea.Height = (int)Math.Ceiling(y) - bbox.Y;
-
-            return Reader.EOF ? RenderResult.Done : RenderResult.Incomplete;
+            LastResult = Reader.EOF ? RenderStatus.Done : RenderStatus.Incomplete;
+            return LastResult;
         }
     }
 
     /// <summary>
     /// Basic cell
     /// </summary>
-    public abstract class Cell : Renderer
+    public abstract class Cell : RenderableElement
     {
         /// <summary>
-        /// Borders for this cell.
+        /// The content for this Cell
         /// </summary>
-        public Borders Borders;
-
-        /// <summary>
-        /// Content Alignment.
-        /// </summary>
-        public virtual Alignment ContentAlignment { get; set; }
+        public Content Content { get; set; }
 
         /// <summary>
         /// Create a new cell.
         /// </summary>
         public Cell()
-        {
-
-        }
-
-        /// <summary>
-        /// Width of this cell.
-        /// </summary>
-        public int Width { get; set; }
-
-        /// <summary>
-        /// Determine whether more content is available.
-        /// </summary>
-        public virtual bool MoreContentAvailable => throw new NotImplementedException();
+        { }
     }
 
     /// <summary>
@@ -377,23 +172,14 @@ namespace PrintRenderer.TableRenderer
     /// </summary>
     public class TextCell : Cell
     {
-        /// <summary>
-        /// The actual text content object.
-        /// </summary>
-        public TextContent TextContent;
-
-        /// <summary>
-        /// Indicates whether more content is available.
-        /// </summary>
-        public override bool MoreContentAvailable => !TextContent.Complete;
 
         /// <summary>
         /// Sets the text content alignment
         /// </summary>
-        public override Alignment ContentAlignment
+        public Alignment ContentAlignment
         {
-            get => TextContent.Alignment;
-            set => TextContent.Alignment = value;
+            get => Content.Alignment;
+            set => Content.Alignment = value;
         }
 
         /// <summary>
@@ -411,7 +197,7 @@ namespace PrintRenderer.TableRenderer
 
         private void _Init(string text, Font font, Alignment alignment, int width)
         {
-            TextContent = new TextContent(text, font, Brushes.Black, alignment);
+            Content = new TextContent(text, font, Brushes.Black, alignment);
             ContentAlignment = alignment;
             Width = width;
         }
@@ -422,7 +208,7 @@ namespace PrintRenderer.TableRenderer
         /// <param name="text">Text string.</param>
         public void SetText(string text)
         {
-            TextContent.SetText(text);
+            (Content as TextContent).SetText(text);
         }
 
         /// <summary>
@@ -432,7 +218,7 @@ namespace PrintRenderer.TableRenderer
         /// <param name="alignment">Text alignment</param>
         public void SetText(string text, Alignment alignment)
         {
-            TextContent.SetText(text);
+            (Content as TextContent).SetText(text);
             ContentAlignment = alignment;
         }
 
@@ -443,7 +229,7 @@ namespace PrintRenderer.TableRenderer
         /// <param name="font">Font.</param>
         public void SetText(string text, Font font)
         {
-            TextContent.SetText(text, font);
+            (Content as TextContent).SetText(text, font);
         }
 
         /// <summary>
@@ -455,7 +241,7 @@ namespace PrintRenderer.TableRenderer
         /// <returns>True if the cell can be partially rendered, else false.</returns>
         public override bool CanBeginRender(Graphics g, ref Rectangle bbox)
         {
-            return TextContent.CanBeginRender(g, ref bbox);
+            return Content.CanBeginRender(g, ref bbox);
         }
 
         /// <summary>
@@ -464,46 +250,38 @@ namespace PrintRenderer.TableRenderer
         /// <param name="g">Graphics object.</param>
         /// <param name="bbox">Allowed bounding box.</param>
         /// <returns>Result of the render operation.</returns>
-        protected internal override RenderResult Render(Graphics g, ref Rectangle bbox)
+        public override RenderStatus Render(Graphics g, ref Rectangle bbox)
         {
             var allowed_bbox = bbox;
             allowed_bbox.Width = Width;
-            RenderResult result = TextContent.Render(g, allowed_bbox);
-            LastRenderArea = TextContent.LastRenderArea;
-            return result;
+            LastResult = Content.Render(g, ref allowed_bbox);
+            LastRenderArea = Content.LastRenderArea;
+            return LastResult;
         }
     }
 
-
-    public partial class RowRenderer : Renderer
+    public partial class Row : HorizontalLayoutRenderer
     {
         /// <summary>
         /// Collection of cells to render for this row
         /// </summary>
-        public List<Cell> Cells;
-
-        /// <summary>
-        /// Content Alignment
-        /// </summary>
-        public Alignment Alignment;
+        public RendererCollection Cells => Renderers;
 
         /// <summary>
         /// Create a new row.
         /// </summary>
-        public RowRenderer()
+        public Row() : base()
         {
-            Cells = new List<Cell>();
         }
 
         /// <summary>
-        /// Get or set the Margin for this row.
+        /// Get the width of this row. 
         /// </summary>
-        public EdgeSizes Margin;
-
-        /// <summary>
-        /// Get or set the row padding.
-        /// </summary>
-        public EdgeSizes Padding;
+        public override int Width
+        {
+            get => _GetWidth();
+            set => throw new NotImplementedException();
+        }
 
         /// <summary>
         /// Add a cell.
@@ -524,95 +302,23 @@ namespace PrintRenderer.TableRenderer
         /// <returns></returns>
         public TextCell AddTextCell(string text, Font font, Alignment alignment = Alignment.Left, int width = 10)
         {
-            TextCell r = new TextCell(text, font, alignment, width);
+            var r = new TextCell(text, font, alignment, width);
             AddCell(r);
             return r;
-        }
-
-        /// <summary>
-        /// Indicate whether the row can be partially rendered. 
-        /// </summary>
-        /// <param name="g"></param>
-        /// <param name="bbox"></param>
-        /// <returns></returns>
-        public override bool CanBeginRender(Graphics g, ref Rectangle bbox)
-        {
-            Rectangle cell_bbox = bbox;
-            Cell r;
-            int n = Cells.Count;
-            for (int i = 0; i < n; ++i)
-            {
-                r = Cells[i];
-                cell_bbox.Width = r.Width;
-                if (!r.CanBeginRender(g, ref cell_bbox))
-                {
-                    return false;
-                }
-                cell_bbox.X += r.Width;
-            }
-            return true;
-        }
-
-        /// <summary>
-        /// Render the row.
-        /// </summary>
-        /// <param name="g">Graphics object</param>
-        /// <param name="bbox">Bounding box.</param>
-        /// <returns>Result of the rendering operation.</returns>
-        protected internal override RenderResult Render(Graphics g, ref Rectangle bbox)
-        {
-            Rectangle available_bbox = bbox;
-            bool more = false;
-            RenderResult result;
-
-            InternalUtil.AdjustBBoxForPaddingAndMargin(ref available_bbox, Margin, Padding, out int width, out int height);
-            InternalUtil.AdjustBBoxForAlignment(ref available_bbox, _GetWidth(), Alignment);
-
-            Cell cell;
-            int n = Cells.Count;
-
-            for (int i = 0; i < n; ++i)
-            {
-                cell = Cells[i];
-                // Only render if the cell needs to render more data.
-
-                if (cell.MoreContentAvailable)
-                {
-                    result = cell.Render(g, ref available_bbox);
-                }
-                else
-                {
-                    result = RenderResult.Done;
-                }
-
-                // Move the available bbox over by the cell's width, 
-                // which may be different than the last render area. 
-                available_bbox.X += cell.Width;
-                width += cell.Width;
-                height = Math.Max(cell.LastRenderArea.Height, height);
-                more = more || result == RenderResult.Incomplete;
-            }
-
-            LastRenderArea.X = bbox.X;
-            LastRenderArea.Y = bbox.Y;
-            LastRenderArea.Width = width;
-            LastRenderArea.Height = height;
-
-            return more ? RenderResult.Incomplete : RenderResult.Done;
         }
     }
 
     /// <summary>
     /// Private, protected, and internal methods.
     /// </summary>
-    public partial class RowRenderer : Renderer
+    public partial class Row : HorizontalLayoutRenderer
     {
 
         private protected int _GetWidth()
         {
-            int w = 0;
-            int n = Cells.Count;
-            for (int i = 0; i < n; ++i)
+            var w = 0;
+            var n = Cells.Count;
+            for (var i = 0; i < n; ++i)
             {
                 w += Cells[i].Width;
             }
@@ -625,12 +331,8 @@ namespace PrintRenderer.TableRenderer
     /// A row that uses callbacks, virtual members, or ienumerators to 
     /// continuously render data. 
     /// </summary>
-    abstract public class IterRowRenderer : RowRenderer
+    public abstract class IterRowRenderer : Row
     {
-        /// <summary>
-        /// Result of the last render operation.
-        /// </summary>
-        protected RenderResult LastResult;
 
         /// <summary>
         /// New Row Renderer
@@ -645,21 +347,25 @@ namespace PrintRenderer.TableRenderer
         /// <param name="g">Graphics object.</param>
         /// <param name="bbox">Bbox.</param>
         /// <returns>Result of the render operation.</returns>
-        protected internal override RenderResult Render(Graphics g, ref Rectangle bbox)
+        public override RenderStatus Render(Graphics g, ref Rectangle bbox)
         {
             var available_bbox = bbox;
             while (true)
             {
-                if (LastResult == RenderResult.Done)
+                if (LastResult == RenderStatus.Done || LastResult == RenderStatus.None)
                 {
+                    ResetCellResults();
                     if (!UpdateRow())
-                        return RenderResult.Done;
+                    {
+                        LastResult = RenderStatus.Done;
+                        return RenderStatus.Done;
+                    }
                 }
 
                 // LastRenderArea set by base.Render()
                 LastResult = base.Render(g, ref available_bbox);
 
-                if (LastResult == RenderResult.Incomplete)
+                if (LastResult == RenderStatus.Incomplete)
                 {
                     return LastResult;
                 }
@@ -670,10 +376,23 @@ namespace PrintRenderer.TableRenderer
         }
 
         /// <summary>
+        /// Once a row has been fully rendered, the LastResult of each cell must
+        /// be reset to None so that `base.Render()` knows that the cell needs to
+        /// be rendered.
+        /// </summary>
+        private void ResetCellResults()
+        {
+            for (var i = 0; i < Renderers.Count; ++i)
+            {
+                Renderers[i].LastResult = RenderStatus.None;
+            }
+        }
+
+        /// <summary>
         /// Called to update the row object.
         /// </summary>
         /// <returns>True if the row was updated and data should be rendered. False if there is no more data to render.</returns>
-        virtual public bool UpdateRow()
+        public virtual bool UpdateRow()
         {
             throw new NotImplementedException();
         }
@@ -693,7 +412,7 @@ namespace PrintRenderer.TableRenderer
         /// Create a new CallbackRowRenderer
         /// </summary>
         /// <param name="UpdateRow">callback</param>
-        public CallbackRowRenderer(Func<CallbackRowRenderer, bool> UpdateRow=null)
+        public CallbackRowRenderer(Func<CallbackRowRenderer, bool> UpdateRow = null)
         {
             UpdateRowCallback = UpdateRow;
         }
@@ -705,7 +424,10 @@ namespace PrintRenderer.TableRenderer
         public override bool UpdateRow()
         {
             if (UpdateRowCallback != null)
+            {
                 return UpdateRowCallback(this);
+            }
+
             return false;
         }
     }

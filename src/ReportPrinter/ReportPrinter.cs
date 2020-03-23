@@ -20,7 +20,7 @@ namespace ReportPrinter
         public static Font RecordFont = new Font("Consolas", 8);
     }
 
-    internal class SingleCellRowRenderer : RowRenderer
+    internal class SingleCellRowRenderer : Row
     {
         private TextCell MyCell;
         public SingleCellRowRenderer(string text="", Font font=null, Alignment alignment=Alignment.Left) : base()
@@ -51,7 +51,7 @@ namespace ReportPrinter
         }
     }
 
-    internal class RecordTableRow : RowRenderer
+    internal class RecordTableRow : Row
     {
         public RecordTableRow(Font font, params string[] headers) : base()
         {

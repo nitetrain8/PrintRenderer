@@ -20,7 +20,7 @@ namespace PrintRenderer
         /// Add a renderer. 
         /// </summary>
         /// <param name="renderer"></param>
-        public void AddRow(Renderer renderer)
+        public void AddRow(RenderableElement renderer)
         {
             Renderers.Add(renderer);
         }
@@ -55,7 +55,7 @@ namespace PrintRenderer
     public partial class SimpleGridPrinter
     {
 
-        private List<Renderer> Renderers;
+        private RendererCollection Renderers;
         private int CurrentIndex;
 
         private void _Init(string printer_name)
@@ -65,7 +65,7 @@ namespace PrintRenderer
                 PrintController = new StandardPrintController()
             };
             Document.PrintPage += OnPagePrint;
-            Renderers = new List<Renderer>();
+            Renderers = new RendererCollection();
             CurrentIndex = 0;
             _ChoosePrinter(printer_name);
         }
@@ -76,14 +76,14 @@ namespace PrintRenderer
             {
                 return;
             }
-            RenderResult more = Render(ev.Graphics, ev.MarginBounds);
-            ev.HasMorePages = more == RenderResult.Incomplete;
+            RenderStatus more = Render(ev.Graphics, ev.MarginBounds);
+            ev.HasMorePages = more == RenderStatus.Incomplete;
         }
 
-        public RenderResult Render(Graphics g, Rectangle bbox)
+        public RenderStatus Render(Graphics g, Rectangle bbox)
         {
-            Renderer r;
-            RenderResult result;
+            RenderableElement r;
+            RenderStatus result;
 
             // Page rendering can always proceed as long as the first
             // renderer can begin rendering on the page, even if rendering
@@ -95,8 +95,8 @@ namespace PrintRenderer
             {
                 r = Renderers[CurrentIndex];
                 result = r.Render(g, ref bbox);
-                if (result == RenderResult.Incomplete)
-                    return RenderResult.Incomplete;
+                if (result == RenderStatus.Incomplete)
+                    return RenderStatus.Incomplete;
 
                 CurrentIndex += 1;
 
@@ -104,12 +104,12 @@ namespace PrintRenderer
                 bbox.Y += r.LastRenderArea.Height;
             } while (CurrentIndex < Renderers.Count);
 
-            return RenderResult.Done;
+            return RenderStatus.Done;
         }
 
         private void _CheckCanRenderOnPage(Graphics g, ref Rectangle page_area)
         {
-            Renderer r = Renderers[CurrentIndex];
+            RenderableElement r = Renderers[CurrentIndex];
             bool can_render = r.CanBeginRender(g, ref page_area);
             if (!can_render)
                 throw new Exceptions.DoesNotFitOnPageException($"{r.ToString()}");
