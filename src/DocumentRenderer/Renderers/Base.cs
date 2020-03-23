@@ -29,6 +29,80 @@ namespace PrintRenderer
     }
 
     /// <summary>
+    /// Content alignment enum.
+    /// </summary>
+    public enum Alignment
+    {
+        /// <summary>
+        /// Left aligned.
+        /// </summary>
+        Left,
+
+        /// <summary>
+        /// Right aligned.
+        /// </summary>
+        Right,
+
+        /// <summary>
+        /// Center aligned
+        /// </summary>
+        Center
+    }
+
+    /// <summary>
+    /// Result of a render operation.
+    /// </summary>
+    public class RenderResult
+    {
+        /// <summary>
+        /// Result of the last render operation.
+        /// </summary>
+        public RenderStatus Status;
+
+        /// <summary>
+        /// BBox of the rendered area. 
+        /// </summary>
+        public Rectangle RenderArea;
+    }
+
+    /// <summary>
+    /// Base element class.
+    /// </summary>
+    public interface IElement
+    {
+        /// <summary>
+        /// Margins around the outside of this element.
+        /// </summary>
+        EdgeSizes Margin { get; }
+
+        /// <summary>
+        /// Internal padding for this element.
+        /// </summary>
+        EdgeSizes Padding { get; }
+
+        /// <summary>
+        /// Borders for this element.
+        /// </summary>
+        Borders Borders { get; }
+
+        /// <summary>
+        /// Get or set the content alignment.
+        /// </summary>
+        Alignment Alignment { get; set; }
+
+        /// <summary>
+        /// Width of this element, if it can be determined. Otherwise, 0.
+        /// </summary>
+        int Width { get; set; }
+
+        /// <summary>
+        /// Height of this element, if it can be determined. Otherwise, 0.
+        /// </summary>
+        int Height { get; set; }
+    }
+
+
+    /// <summary>
     /// Interface for all renderers.
     /// </summary>
     public interface IRenderer
@@ -58,6 +132,71 @@ namespace PrintRenderer
         /// The result of the last render operation.
         /// </summary>
         RenderStatus LastResult { get; }
+    }
+
+    /// <summary>
+    /// Represents a single border line (top, left, right, etc).
+    /// </summary>
+    public struct BorderSegment
+    {
+        /// <summary>
+        /// Brush to use. 
+        /// </summary>
+        public Pen Pen;
+
+        /// <summary>
+        /// Line Width.
+        /// </summary>
+        public float Width;
+
+        /// <summary>
+        /// Whether to show the border. 
+        /// </summary>
+        public bool IsVisible;
+        
+        /// <summary>
+        /// Create a new border segment
+        /// </summary>
+        /// <param name="b">Brush</param>
+        /// <param name="w">Line width</param>
+        /// <param name="show">Whether the border should be shown.</param>
+        public BorderSegment(Pen b, float w, bool show)
+        {
+            Pen = b;
+            Width = w;
+            IsVisible = show;
+        }
+
+        /// <summary>
+        /// Create a new null border segment.
+        /// </summary>
+        /// <returns></returns>
+        public static BorderSegment None
+        {
+            get
+            {
+                return new BorderSegment(Pens.Black, 0, false);
+            }
+        }
+
+        /// <summary>
+        /// Draws the border border according to the indicated line segment cordinates.
+        /// </summary>
+        /// <param name="g">Graphics</param>
+        /// <param name="x1">First X coordinate</param>
+        /// <param name="y1">First Y coordinate</param>
+        /// <param name="x2">Second X coordinate</param>
+        /// <param name="y2">Second Y coordinate</param>
+        public void Draw(Graphics g, int x1, int y1, int x2, int y2)
+        {
+            if (IsVisible)
+            {
+                float w = Pen.Width;
+                Pen.Width = Width;
+                g.DrawLine(Pen, x1, y1, x2, y2);
+                Pen.Width = w;
+            }
+        }
     }
 
     /// <summary>
@@ -113,49 +252,6 @@ namespace PrintRenderer
     }
 
     /// <summary>
-    /// Represents a single border line (top, left, right, etc).
-    /// </summary>
-    public struct BorderSegment
-    {
-        /// <summary>
-        /// Brush to use. 
-        /// </summary>
-        public Brush Brush;
-
-        /// <summary>
-        /// Line Width.
-        /// </summary>
-        public int Width;
-
-        /// <summary>
-        /// Whether to show the border. 
-        /// </summary>
-        public bool Show;
-        
-        /// <summary>
-        /// Create a new border segment
-        /// </summary>
-        /// <param name="b">Brush</param>
-        /// <param name="w">Line width</param>
-        /// <param name="show">Whether the border should be shown.</param>
-        public BorderSegment(Brush b, int w, bool show)
-        {
-            Brush = b;
-            Width = w;
-            Show = show;
-        }
-
-        /// <summary>
-        /// Create a new null border segment.
-        /// </summary>
-        /// <returns></returns>
-        public static BorderSegment None()
-        {
-            return new BorderSegment(Brushes.Black, 0, false);
-        }
-    }
-
-    /// <summary>
     /// Represents the borders of a bounding box.
     /// </summary>
     public class Borders
@@ -185,10 +281,33 @@ namespace PrintRenderer
         /// </summary>
         public Borders()
         {
-            Top = BorderSegment.None();
-            Left = BorderSegment.None();
-            Right = BorderSegment.None();
-            Bottom = BorderSegment.None();
+            Top = BorderSegment.None;
+            Left = BorderSegment.None;
+            Right = BorderSegment.None;
+            Bottom = BorderSegment.None;
+        }
+
+        /// <summary>
+        /// Draws the borders around the specified BBox.
+        /// </summary>
+        /// <param name="g">Graphics</param>
+        /// <param name="bbox">Rectangle to draw borders on.</param>
+        public void Draw(Graphics g, ref Rectangle bbox)
+        {
+            //   (x1,y1) ------ (x2, y1)
+            //      |               |
+            //      |               |
+            //   (x1,y2) ------ (x2, y2)
+
+            int x1 = bbox.X;
+            int x2 = bbox.X + bbox.Width;
+            int y1 = bbox.Y;
+            int y2 = bbox.Y + bbox.Height;
+
+            Top.Draw(g, x1, y1, x2, y1);
+            Left.Draw(g, x1, y1, x1, y2);
+            Right.Draw(g, x2, y1, x2, y2);
+            Bottom.Draw(g, x1, y2, x2, y2);
         }
     }
 
@@ -218,6 +337,16 @@ namespace PrintRenderer
         public int Bottom;
 
         /// <summary>
+        /// Total thickness of the side edges.
+        /// </summary>
+        public int HSize => Left + Right;
+
+        /// <summary>
+        /// Total thickness of the top and bottom edges.
+        /// </summary>
+        public int VSize => Top + Bottom;
+
+        /// <summary>
         /// Initialize a new EdgeSizes structure
         /// </summary>
         /// <param name="left">Left edge.</param>
@@ -231,63 +360,6 @@ namespace PrintRenderer
             Right = right;
             Bottom = bottom;
         }
-    }
-
-    /// <summary>
-    /// Base element class.
-    /// </summary>
-    public interface IElement
-    {
-        /// <summary>
-        /// Margins around the outside of this element.
-        /// </summary>
-        EdgeSizes Margin { get; }
-
-        /// <summary>
-        /// Internal padding for this element.
-        /// </summary>
-        EdgeSizes Padding { get; }
-
-        /// <summary>
-        /// Borders for this element.
-        /// </summary>
-        Borders Borders { get; }
-
-        /// <summary>
-        /// Get or set the content alignment.
-        /// </summary>
-        Alignment Alignment { get; set; }
-
-        /// <summary>
-        /// Width of this element, if it can be determined. Otherwise, 0.
-        /// </summary>
-        int Width { get; set; }
-
-        /// <summary>
-        /// Height of this element, if it can be determined. Otherwise, 0.
-        /// </summary>
-        int Height { get; set; }
-    }
-
-    /// <summary>
-    /// Content alignment enum.
-    /// </summary>
-    public enum Alignment
-    {
-        /// <summary>
-        /// Left aligned.
-        /// </summary>
-        Left,
-
-        /// <summary>
-        /// Right aligned.
-        /// </summary>
-        Right,
-
-        /// <summary>
-        /// Center aligned
-        /// </summary>
-        Center
     }
 
     /// <summary>
@@ -319,6 +391,22 @@ namespace PrintRenderer
             }
             // just in case anything changes
             throw new NotImplementedException($"Alignment: {alignment.ToString()}");
+        }
+
+        /// <summary>
+        /// Adjustes the BBox for the given edge thickness (padding or margin). 
+        /// </summary>
+        /// <param name="bbox"></param>
+        /// <param name="edges"></param>
+        public static Rectangle AdjustedBBox(Rectangle bbox, EdgeSizes edges)
+        {
+            var w = edges.HSize;
+            var h = edges.VSize;
+            bbox.X += w;
+            bbox.Y += h;
+            bbox.Width -= w;
+            bbox.Height -= h;
+            return bbox;
         }
 
         /// <summary>
@@ -386,19 +474,6 @@ namespace PrintRenderer
     {
         
         /// <summary>
-        /// Create a new RenderableElement
-        /// </summary>
-        public RenderableElement()
-        {
-            LastRenderArea = new RenderArea();
-            LastResult = RenderStatus.None;
-            Margin = new EdgeSizes();
-            Padding = new EdgeSizes();
-            Borders = new Borders();
-            Alignment = Alignment.Left;
-        }
-        
-        /// <summary>
         /// BBox of the last successful render operation.
         /// </summary>
         public RenderArea LastRenderArea { get; protected internal set; }
@@ -437,6 +512,19 @@ namespace PrintRenderer
         /// Get or set the content alignment
         /// </summary>
         public Alignment Alignment { get; set; }
+
+        /// <summary>
+        /// Create a new RenderableElement
+        /// </summary>
+        public RenderableElement()
+        {
+            LastRenderArea = new RenderArea();
+            LastResult = RenderStatus.None;
+            Margin = new EdgeSizes();
+            Padding = new EdgeSizes();
+            Borders = new Borders();
+            Alignment = Alignment.Left;
+        }
 
         /// <summary>
         /// Throws NotImplementedException
@@ -490,7 +578,7 @@ namespace PrintRenderer
     /// <summary>
     /// A renderer that holds a collection 
     /// </summary>
-    public class VerticalLayoutRenderer : ContainerRenderer
+    abstract public class VerticalLayoutRenderer : ContainerRenderer
     {
 
         /// <summary>
@@ -558,7 +646,7 @@ namespace PrintRenderer
     /// <summary>
     /// Lays out a collection of subrenderers horizontally, e.g. table row
     /// </summary>
-    public class HorizontalLayoutRenderer : ContainerRenderer
+    abstract public class HorizontalLayoutRenderer : ContainerRenderer
     {
         /// <summary>
         /// Create a new HorizontalLayoutRenderer.
@@ -599,15 +687,18 @@ namespace PrintRenderer
         /// <returns>Result of the render operation.</returns>
         public override RenderStatus Render(Graphics g, ref Rectangle bbox)
         {
-            Rectangle available_bbox = bbox;
             bool more = false;
             RenderStatus result;
 
-            RenderMethods.AdjustBBoxForPaddingAndMargin(ref available_bbox, Margin, Padding, out int width, out int height);
+            var border_bbox = RenderMethods.AdjustedBBox(bbox, Padding);
+            var available_bbox = RenderMethods.AdjustedBBox(border_bbox, Margin);
             RenderMethods.AdjustBBoxForAlignment(ref available_bbox, Width, Alignment);
 
             RenderableElement element;
             int n = Renderers.Count;
+
+            int height = Padding.VSize + Margin.VSize;
+            int width = Padding.HSize + Margin.HSize;
 
             for (int i = 0; i < n; ++i)
             {
@@ -624,8 +715,7 @@ namespace PrintRenderer
                     result = RenderStatus.Done;
                 }
 
-                // Move the available bbox over by the cell's width, 
-                // which may be different than the last render area. 
+                // Move the available bbox over by the cell's width.
                 available_bbox.X += element.Width;
                 width += element.Width;
                 more = more || result == RenderStatus.Incomplete;
