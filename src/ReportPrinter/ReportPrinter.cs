@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Drawing.Printing;
-using PrintRenderer;
+﻿using PrintRenderer;
 using PrintRenderer.TableRenderer;
-using ADODB;
+using System;
 using System.Drawing;
 
 namespace ReportPrinter
@@ -23,11 +17,11 @@ namespace ReportPrinter
     internal class SingleCellRowRenderer : Row
     {
         private TextCell MyCell;
-        public SingleCellRowRenderer(string text="", Font font=null, Alignment alignment=Alignment.Left) : base()
+        public SingleCellRowRenderer(string text = "", Font font = null, Alignment alignment = Alignment.Left) : base()
         {
             Alignment = alignment;
             MyCell = new TextCell(text, font, alignment, 650);
-            Cells.Add(MyCell);
+            AddCell(MyCell);
         }
         public void SetText(string text, Font font)
         {
@@ -61,28 +55,27 @@ namespace ReportPrinter
                 AddCell(cell);
             }
         }
-        public void SetWidths(params int[] args)
-        {
-            if (args.Length != Cells.Count)
-                throw new ArgumentException($"Number of widths provided does not match number of cells. ({args.Length} != {Cells.Count})");
-            for (int i = 0; i < args.Length; ++i)
-                Cells[i].Width = args[i];
-        }
     }
 
     internal class RecipeStepRecord
     {
-        TextCell StepNum;
-        TextCell Timestamp;
-        TextCell Step;
-        TextCell StepType;
+        public TextCell StepNum;
+        public TextCell Timestamp;
+        public TextCell Step;
+        public TextCell StepType;
+        public TextCell NewRecipe;
+        public CallbackRowRenderer Row;
+        private bool ConfiguredForSteps = true;
 
-        public RecipeStepRecord()
+        public RecipeStepRecord(CallbackRowRenderer row)
         {
             StepNum = new TextCell("", ReportFonts.RecordFont);
             Timestamp = new TextCell("", ReportFonts.RecordFont);
             Step = new TextCell("", ReportFonts.RecordFont);
             StepType = new TextCell("", ReportFonts.RecordFont);
+            NewRecipe = new TextCell("", ReportFonts.RecordFont, Alignment.Center);
+            Row = row;
+            ConfigureForRecipeSteps();
         }
         public void SetWidths(int[] widths)
         {
@@ -90,52 +83,78 @@ namespace ReportPrinter
             Timestamp.Width = widths[1];
             Step.Width = widths[2];
             StepType.Width = widths[3];
+            int w = 0;
+            for (int i = 0; i < widths.Length; ++i)
+            {
+                w += widths[i];
+            }
+            NewRecipe.Width = w;
         }
-        public void SetData(string num, string time, string step, string type)
+        public void SetRecipeStepData(string num, string time, string step, string type)
         {
+            if (!ConfiguredForSteps)
+            {
+                ConfigureForRecipeSteps();
+            }
+
             StepNum.SetText(num);
             Timestamp.SetText(time);
             Step.SetText(step);
             StepType.SetText(type);
         }
-        private bool UpdateRowData(CallbackRowRenderer row)
+        public void SetNewRecipeData(string recipe_name)
         {
-            return false;
+            if (ConfiguredForSteps)
+            {
+                ConfigureForNewRecipe();
+            }
+
+            NewRecipe.SetText($"------------ New Recipe: {recipe_name} ------------");
+
         }
-        public void Connect(CallbackRowRenderer r)
+
+        private void ConfigureForNewRecipe()
         {
-            r.AddCell(StepNum);
-            r.AddCell(Timestamp);
-            r.AddCell(Step);
-            r.AddCell(StepType);
+            Row.ClearCells();
+            Row.AddCell(NewRecipe);
+            ConfiguredForSteps = false;
+        }
+        private void ConfigureForRecipeSteps()
+        {
+            Row.ClearCells();
+            Row.AddCell(StepNum);
+            Row.AddCell(Timestamp);
+            Row.AddCell(Step);
+            Row.AddCell(StepType);
+            ConfiguredForSteps = true;
         }
 
     }
 
     public class RecipeStepsReportPrinter
     {
-        public SimpleGridPrinter Printer;
+        public SimpleDocumentRenderer Printer;
 
         // Report elements as helper classes
-        ReportTitle _title;
-        ReportMetadata _metadata;
-        RecordTableRow _headers;
-        RecipeStepRecord _record;
-        CallbackRowRenderer _recordRow;
+        internal ReportTitle _title;
+        internal ReportMetadata _metadata;
+        internal RecordTableRow _headers;
+        internal RecipeStepRecord _record;
+        internal CallbackRowRenderer _recordRow;
 
-        public RecipeStepsReportPrinter(string printer_name="")
+        public RecipeStepsReportPrinter(string printer_name = "")
         {
             _Init(printer_name);
         }
         private void _Init(string printer_name)
         {
-            _Init(new SimpleGridPrinter(printer_name));
+            _Init(new SimpleDocumentRenderer(printer_name));
         }
         public void Print()
         {
             Printer.Print();
         }
-        private void _Init(SimpleGridPrinter p)
+        private void _Init(SimpleDocumentRenderer p)
         {
             Printer = p;
 
@@ -144,10 +163,9 @@ namespace ReportPrinter
             _title = new ReportTitle("Recipe Steps Report");
             _metadata = new ReportMetadata("Batch name: \"test\"");
             _headers = new RecordTableRow(ReportFonts.ColumnHeaderFont, "#", "Timestamp", "Step", "Type");
-            _recordRow = new CallbackRowRenderer(UpdateRow);
 
-            _record = new RecipeStepRecord();
-            _record.Connect(_recordRow);
+            _recordRow = new CallbackRowRenderer(UpdateRow);
+            _record = new RecipeStepRecord(_recordRow);
 
             p.AddRow(_title);
             p.AddRow(_metadata);
@@ -159,7 +177,25 @@ namespace ReportPrinter
 
             _headers.SetWidths(widths);
             _record.SetWidths(widths);
+        }
 
+        private bool UpdateRow(CallbackRowRenderer row)
+        {
+            return Update();
+        }
+        public virtual bool Update()
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+
+    public class DummyRecipeStepsReport : RecipeStepsReportPrinter
+    {
+        string[][] data;
+        int _index = 0;
+        public DummyRecipeStepsReport()
+        {
             data = new string[][]
             {
                 new string[] {"foo", "bar", "baz" },
@@ -169,17 +205,17 @@ namespace ReportPrinter
             };
             _index = 0;
         }
-        string[][] data;
-        int _index = 0;
-        private bool UpdateRow(CallbackRowRenderer row)
+
+        public override bool Update()
         {
             if (_index >= data.Length)
+            {
                 return false;
+            }
 
             var rowdata = data[_index++];
-            _record.SetData(_index.ToString(), rowdata[0], rowdata[1], rowdata[2]);
+            _record.SetRecipeStepData(_index.ToString(), rowdata[0], rowdata[1], rowdata[2]);
             return true;
         }
-        
     }
 }

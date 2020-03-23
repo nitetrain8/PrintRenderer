@@ -24,14 +24,14 @@ namespace TestCode1
         public static int Main(string[] args)
         {
             Test4();
-            //AcroPDFLib.
+
             return 0;
         }
 
         private static void Test4()
         {
             Console.WriteLine("nothing to see here....");
-            var printer = new ReportPrinter.RecipeStepsReportPrinter();
+            var printer = new ReportPrinter.DummyRecipeStepsReport();
             printer.Printer.Document.PrinterSettings.PrinterName = "Microsoft Print to PDF";
             printer.Printer.Document.PrinterSettings.PrintToFile = true;
             printer.Printer.Document.PrinterSettings.PrintFileName = Path.Combine(KnownFolders.Downloads, "hmm.pdf");
@@ -43,14 +43,14 @@ namespace TestCode1
             //Test1();
             //Test2();
             const string file = "testcode2.pdf";
-            SimpleGridPrinter doc = CreatePDFPRinter(file);
+            SimpleDocumentRenderer doc = CreatePDFPRinter(file);
             Test3(doc);
            
             //var doc = new SimpleGridPrinter("Xerox VersaLink C405 Biolab Bullpen");
             //Test3(doc);
         }
 
-        private static void Test3(SimpleGridPrinter doc)
+        private static void Test3(SimpleDocumentRenderer doc)
         {
 
 
@@ -95,7 +95,7 @@ namespace TestCode1
         private static void Test2()
         {
             const string file = "testcode2.pdf";
-            SimpleGridPrinter doc = CreatePDFPRinter(file);
+            SimpleDocumentRenderer doc = CreatePDFPRinter(file);
 
             int[] widths = new int[] { 50, 200, 350, 150 };
 
@@ -168,7 +168,7 @@ namespace TestCode1
         private static void Test1()
         {
             const string file = "testcode.pdf";
-            SimpleGridPrinter doc = CreatePDFPRinter(file);
+            SimpleDocumentRenderer doc = CreatePDFPRinter(file);
 
             string lorem_text = File.ReadAllText(Path.Combine(KnownFolders.Downloads, "lorem2.txt"));
             string[] lorem_words = lorem_text.Split(' ');
@@ -183,17 +183,17 @@ namespace TestCode1
             doc.Print();
         }
 
-        private static SimpleGridPrinter CreatePDFPRinter(string file)
+        private static SimpleDocumentRenderer CreatePDFPRinter(string file)
         {
             string pfn = Path.Combine(KnownFolders.Downloads, file);
 
-            SimpleGridPrinter doc = new SimpleGridPrinter("Microsoft Print to PDF");
+            SimpleDocumentRenderer doc = new SimpleDocumentRenderer("Microsoft Print to PDF");
             doc.Document.PrinterSettings.PrintFileName = pfn;
             doc.Document.PrinterSettings.PrintToFile = true;
             return doc;
         }
 
-        private static void AddRowWithText(SimpleGridPrinter printer, string text1, string text2, string text3)
+        private static void AddRowWithText(SimpleDocumentRenderer printer, string text1, string text2, string text3)
         {
             Row row = new Row();
             printer.AddRow(row);

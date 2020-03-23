@@ -9,7 +9,7 @@ namespace PrintRenderer
     /// <summary>
     /// Simple grid-based printer thingy.
     /// </summary>
-    public partial class SimpleGridPrinter
+    public partial class SimpleDocumentRenderer
     {
         /// <summary>
         /// The print document.
@@ -28,7 +28,7 @@ namespace PrintRenderer
         /// <summary>
         /// Create a new SimpleGridPrinter.
         /// </summary>
-        public SimpleGridPrinter()
+        public SimpleDocumentRenderer()
         {
             _Init(null);
         }
@@ -37,7 +37,7 @@ namespace PrintRenderer
         /// Create a SimpleGridPrinter using the indicated printer.
         /// </summary>
         /// <param name="printer_name">Name of the printer to use.</param>
-        public SimpleGridPrinter(string printer_name)
+        public SimpleDocumentRenderer(string printer_name)
         {
             _Init(printer_name);
         }
@@ -52,11 +52,8 @@ namespace PrintRenderer
     }
 
     // private & internal methods
-    public partial class SimpleGridPrinter
+    public partial class SimpleDocumentRenderer : VerticalLayoutRenderer
     {
-
-        private RendererCollection Renderers;
-        private int CurrentIndex;
 
         private void _Init(string printer_name)
         {
@@ -65,8 +62,6 @@ namespace PrintRenderer
                 PrintController = new StandardPrintController()
             };
             Document.PrintPage += OnPagePrint;
-            Renderers = new RendererCollection();
-            CurrentIndex = 0;
             _ChoosePrinter(printer_name);
         }
 
@@ -74,46 +69,34 @@ namespace PrintRenderer
         {
             if (CurrentIndex >= Renderers.Count)
             {
+                ev.HasMorePages = false;
                 return;
             }
-            RenderStatus more = Render(ev.Graphics, ev.MarginBounds);
-            ev.HasMorePages = more == RenderStatus.Incomplete;
-        }
+            Rectangle bbox = ev.MarginBounds;
+            RenderResult result = new RenderResult();
+            Render(ev.Graphics, ref bbox, ref result);
 
-        public RenderStatus Render(Graphics g, Rectangle bbox)
-        {
-            RenderableElement r;
-            RenderStatus result;
-
-            // Page rendering can always proceed as long as the first
-            // renderer can begin rendering on the page, even if rendering
-            // is incomplete. If it can't, then rendering cannot proceed. 
-            _CheckCanRenderOnPage(g, ref bbox);
-
-            // loop forever until end-of-page or no more renderers available. 
-            do
+            // If rendering is incomplete, and the only thing rendered
+            // on the page was the padding and margin, then rendering failed
+            // and we have to bail. 
+            if (result.Status == RenderStatus.Incomplete)
             {
-                r = Renderers[CurrentIndex];
-                result = r.Render(g, ref bbox);
-                if (result == RenderStatus.Incomplete)
-                    return RenderStatus.Incomplete;
+                var current_renderer = Renderers[CurrentIndex];
+                var h = current_renderer.Margin.VSize + current_renderer.Margin.HSize;
+                if (result.RenderArea.Height == h)
+                    throw new Exceptions.DoesNotFitOnPageException("Document rendering failed");
+            }
 
-                CurrentIndex += 1;
-
-                bbox.Height -= r.LastRenderArea.Height;
-                bbox.Y += r.LastRenderArea.Height;
-            } while (CurrentIndex < Renderers.Count);
-
-            return RenderStatus.Done;
+            ev.HasMorePages = result.Status == RenderStatus.Incomplete;
         }
 
-        private void _CheckCanRenderOnPage(Graphics g, ref Rectangle page_area)
-        {
-            RenderableElement r = Renderers[CurrentIndex];
-            bool can_render = r.CanBeginRender(g, ref page_area);
-            if (!can_render)
-                throw new Exceptions.DoesNotFitOnPageException($"{r.ToString()}");
-        }
+        //private void _CheckCanRenderOnPage(Graphics g, ref Rectangle page_area)
+        //{
+        //    RenderableElement r = Renderers[CurrentIndex];
+        //    bool can_render = r.CanBeginRender(g, ref page_area);
+        //    if (!can_render)
+        //        throw new Exceptions.DoesNotFitOnPageException($"{r.ToString()}");
+        //}
 
         private void _ChoosePrinter(string printer_name)
         {

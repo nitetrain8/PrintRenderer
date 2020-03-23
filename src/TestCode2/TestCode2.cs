@@ -82,7 +82,7 @@ namespace TestCode2
             return GetStep2;
         }
 
-        internal static void PrintTestRecipeStepsReport(SimpleGridPrinter doc)
+        internal static void PrintTestRecipeStepsReport(SimpleDocumentRenderer doc)
         {
             int[] widths = new int[] { 50, 200, 350, 150 };
 
@@ -168,7 +168,7 @@ namespace TestCode2
 
         private static int PrintFile(string PrinterName, string PrintFileName)
         {
-            var doc = new SimpleGridPrinter(PrinterName);
+            var doc = new SimpleDocumentRenderer(PrinterName);
             if (!String.IsNullOrWhiteSpace(PrintFileName))
             {
                 doc.Document.PrinterSettings.PrintToFile = true;

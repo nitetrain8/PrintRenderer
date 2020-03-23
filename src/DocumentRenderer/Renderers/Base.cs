@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Collections.ObjectModel;
+
 
 namespace PrintRenderer
 {
@@ -63,6 +65,15 @@ namespace PrintRenderer
         /// BBox of the rendered area. 
         /// </summary>
         public Rectangle RenderArea;
+
+        /// <summary>
+        /// Creates a new, empty render result
+        /// </summary>
+        public RenderResult()
+        {
+            RenderArea = Rectangle.Empty;
+            Status = RenderStatus.None;
+        }
     }
 
     /// <summary>
@@ -112,26 +123,32 @@ namespace PrintRenderer
         /// </summary>
         /// <param name="g">Graphics object</param>
         /// <param name="bbox">BBox to render content in.</param>
+        /// <param name="result">RenderResult object to hold last result.</param>
         /// <returns>Result of the rendering operation.</returns>
-        RenderStatus Render(Graphics g, ref Rectangle bbox);
+        void Render(Graphics g, ref Rectangle bbox, ref RenderResult result);
 
-        /// <summary>
-        /// Indicates whether rendering can begin.
-        /// </summary>
-        /// <param name="g">Graphics object.</param>
-        /// <param name="bbox">BBox to check.</param>
-        /// <returns>True if the rendering operation can be at least partially completed.</returns>
-        bool CanBeginRender(Graphics g, ref Rectangle bbox);
+        ///// <summary>
+        ///// Called when rendering begins.
+        ///// </summary>
+        //void BeginRendering();
 
-        /// <summary>
-        /// Area for the last render operation.
-        /// </summary>
-        RenderArea LastRenderArea { get; }
+        ///// <summary>
+        ///// Called when rendering ends.
+        ///// </summary>
+        //void EndRendering();
 
-        /// <summary>
-        /// The result of the last render operation.
-        /// </summary>
-        RenderStatus LastResult { get; }
+        ///// <summary>
+        ///// Indicates whether rendering operations are occurring. 
+        ///// </summary>
+        //bool IsRendering { get; }
+
+        ///// <summary>
+        ///// Indicates whether rendering can begin.
+        ///// </summary>
+        ///// <param name="g">Graphics object.</param>
+        ///// <param name="bbox">BBox to check.</param>
+        ///// <returns>True if the rendering operation can be at least partially completed.</returns>
+        //bool CanBeginRender(Graphics g, ref Rectangle bbox);
     }
 
     /// <summary>
@@ -153,7 +170,7 @@ namespace PrintRenderer
         /// Whether to show the border. 
         /// </summary>
         public bool IsVisible;
-        
+
         /// <summary>
         /// Create a new border segment
         /// </summary>
@@ -171,13 +188,7 @@ namespace PrintRenderer
         /// Create a new null border segment.
         /// </summary>
         /// <returns></returns>
-        public static BorderSegment None
-        {
-            get
-            {
-                return new BorderSegment(Pens.Black, 0, false);
-            }
-        }
+        public static BorderSegment None => new BorderSegment(Pens.Black, 0, false);
 
         /// <summary>
         /// Draws the border border according to the indicated line segment cordinates.
@@ -227,10 +238,7 @@ namespace PrintRenderer
         /// <summary>
         /// X coordinate of right edge of rectangle.
         /// </summary>
-        public int Right
-        {
-            get => rect.X + rect.Width;
-        }
+        public int Right => rect.X + rect.Width;
 
         /// <summary>
         /// Rectangle.Width;
@@ -368,44 +376,16 @@ namespace PrintRenderer
     internal static class RenderMethods
     {
         /// <summary>
-        /// Calculate the X coordinate to draw the provided line 
-        /// based on the current Alignment setting. 
-        /// </summary>
-        /// <param name="width">Line width.</param>
-        /// <param name="bbox">Bounding box.</param>
-        /// <param name="alignment">Text alignment.</param>
-        /// <returns></returns>
-        public static float CalcXPosition(float width, ref Rectangle bbox, Alignment alignment)
-        {
-            switch (alignment)
-            {
-                case Alignment.Left:
-                    return bbox.Left;
-                case Alignment.Right:
-                    return bbox.Right - width;
-                case Alignment.Center:
-                    int middle = (bbox.Right + bbox.Left) / 2;
-                    return middle - width / 2;
-                default:
-                    break;
-            }
-            // just in case anything changes
-            throw new NotImplementedException($"Alignment: {alignment.ToString()}");
-        }
-
-        /// <summary>
         /// Adjustes the BBox for the given edge thickness (padding or margin). 
         /// </summary>
         /// <param name="bbox"></param>
         /// <param name="edges"></param>
         public static Rectangle AdjustedBBox(Rectangle bbox, EdgeSizes edges)
         {
-            var w = edges.HSize;
-            var h = edges.VSize;
-            bbox.X += w;
-            bbox.Y += h;
-            bbox.Width -= w;
-            bbox.Height -= h;
+            bbox.X += edges.Left;
+            bbox.Y += edges.Top;
+            bbox.Width -= edges.Left + edges.Right;
+            bbox.Height -= edges.Top + edges.Bottom;
             return bbox;
         }
 
@@ -472,17 +452,6 @@ namespace PrintRenderer
     /// </summary>
     public abstract class RenderableElement : IElement, IRenderer
     {
-        
-        /// <summary>
-        /// BBox of the last successful render operation.
-        /// </summary>
-        public RenderArea LastRenderArea { get; protected internal set; }
-
-        /// <summary>
-        /// Result of the last render operation.
-        /// </summary>
-        public RenderStatus LastResult { get; protected internal set; }
-
         /// <summary>
         /// Width of this element.
         /// </summary>
@@ -518,35 +487,28 @@ namespace PrintRenderer
         /// </summary>
         public RenderableElement()
         {
-            LastRenderArea = new RenderArea();
-            LastResult = RenderStatus.None;
             Margin = new EdgeSizes();
             Padding = new EdgeSizes();
             Borders = new Borders();
             Alignment = Alignment.Left;
         }
 
-        /// <summary>
-        /// Throws NotImplementedException
-        /// </summary>
-        /// <param name="g"></param>
-        /// <param name="bbox"></param>
-        /// <returns></returns>
-        virtual public bool CanBeginRender(Graphics g, ref Rectangle bbox)
-        {
-            throw new NotImplementedException();
-        }
+        ///// <summary>
+        ///// Throws NotImplementedException
+        ///// </summary>
+        ///// <param name="g"></param>
+        ///// <param name="bbox"></param>
+        ///// <returns></returns>
+        //abstract public bool CanBeginRender(Graphics g, ref Rectangle bbox);
 
         /// <summary>
         /// Throws NotImplementedException
         /// </summary>
         /// <param name="g"></param>
         /// <param name="bbox"></param>
+        /// <param name="result"></param>
         /// <returns></returns>
-        virtual public RenderStatus Render(Graphics g, ref Rectangle bbox)
-        {
-            throw new NotImplementedException();
-        }
+        abstract public void Render(Graphics g, ref Rectangle bbox, ref RenderResult result);
     }
 
     /// <summary>
@@ -555,6 +517,8 @@ namespace PrintRenderer
     public class RendererCollection : List<RenderableElement>
     {
     }
+
+    
 
     /// <summary>
     /// A renderer that contains a collection of subrenderers.
@@ -595,20 +559,20 @@ namespace PrintRenderer
             CurrentIndex = 0;
         }
 
-        /// <summary>
-        /// For a vertical layout of objects, the render operation can be at 
-        /// least partially completed as long as the next object in the list can
-        /// be at least partially rendered, including through repeated incomplete
-        /// render operations. 
-        /// </summary>
-        /// <param name="g"></param>
-        /// <param name="bbox"></param>
-        /// <returns>True if the render operation can be at least partially completed.</returns>
-        public override bool CanBeginRender(Graphics g, ref Rectangle bbox)
-        {
-            RenderableElement r = Renderers[CurrentIndex];
-            return r.CanBeginRender(g, ref bbox);
-        }
+        ///// <summary>
+        ///// For a vertical layout of objects, the render operation can be at 
+        ///// least partially completed as long as the next object in the list can
+        ///// be at least partially rendered, including through repeated incomplete
+        ///// render operations. 
+        ///// </summary>
+        ///// <param name="g"></param>
+        ///// <param name="bbox"></param>
+        ///// <returns>True if the render operation can be at least partially completed.</returns>
+        //public override bool CanBeginRender(Graphics g, ref Rectangle bbox)
+        //{
+        //    RenderableElement r = Renderers[CurrentIndex];
+        //    return r.CanBeginRender(g, ref bbox);
+        //}
 
         /// <summary>
         /// Render the collection of objects held by this layout renderer. 
@@ -616,30 +580,55 @@ namespace PrintRenderer
         /// </summary>
         /// <param name="g">Graphics object</param>
         /// <param name="bbox">Bounding box</param>
+        /// <param name="result">Result of the last render operation</param>
         /// <returns></returns>
-        public override RenderStatus Render(Graphics g, ref Rectangle bbox)
+        public override void Render(Graphics g, ref Rectangle bbox, ref RenderResult result)
         {
-            RenderableElement r;
-            RenderStatus result;
-            Rectangle available_bbox = bbox;
+
+            if (CurrentIndex >= Renderers.Count)
+            {
+                result.Status = RenderStatus.Done;
+                result.RenderArea = Rectangle.Empty;
+                return;
+            }
+
+            Rectangle border_bbox = RenderMethods.AdjustedBBox(bbox, Padding);
+            Rectangle available_bbox = RenderMethods.AdjustedBBox(border_bbox, Margin);
 
             // loop forever until end-of-page or no more renderers available. 
             do
             {
-                r = Renderers[CurrentIndex];
-                result = r.Render(g, ref available_bbox);
-                if (result == RenderStatus.Incomplete)
+                // If the previous call to Render() resulted in Incomplete,
+                // then CurrentIndex will point to the correct renderer on
+                // the first loop here.
+                var r = Renderers[CurrentIndex];
+                r.Render(g, ref available_bbox, ref result);
+                available_bbox.Height -= result.RenderArea.Height;
+                available_bbox.Y += result.RenderArea.Height;
+
+                if (result.Status == RenderStatus.Incomplete)
                 {
-                    return RenderStatus.Incomplete;
+                    break;
                 }
 
                 CurrentIndex += 1;
 
-                available_bbox.Height -= r.LastRenderArea.Height;
-                available_bbox.Y += r.LastRenderArea.Height;
             } while (CurrentIndex < Renderers.Count);
 
-            return RenderStatus.Done;
+            Borders.Draw(g, ref border_bbox);
+
+            // result.Status should match the last SubRenderer's status
+            // i.e. we're incomplete if they were, otherwise
+            // we're done too. 
+
+            // result.RenderArea should have the original BBox's 
+            // top left coordinates and width. The height is the
+            // difference in original height with the remaining available height
+            // plus the padding and margins widths removed earlier. 
+            result.RenderArea.X = bbox.X;
+            result.RenderArea.Y = bbox.Y;
+            result.RenderArea.Width = bbox.Width;
+            result.RenderArea.Height = bbox.Height - (available_bbox.Height + Padding.VSize + Margin.VSize);
         }
     }
 
@@ -656,27 +645,55 @@ namespace PrintRenderer
         }
 
         /// <summary>
-        /// True if any of the not-yet-fully-rendered subelements can begin rendering.
+        /// Result of the last child operation.
         /// </summary>
-        /// <param name="g">Graphics</param>
-        /// <param name="bbox">Bbox</param>
-        /// <returns>True if rendering can begin.</returns>
-        public override bool CanBeginRender(Graphics g, ref Rectangle bbox)
+        protected RenderResult[] ChildResults;
+
+        ///// <summary>
+        ///// True if any of the not-yet-fully-rendered subelements can begin rendering.
+        ///// </summary>
+        ///// <param name="g">Graphics</param>
+        ///// <param name="bbox">Bbox</param>
+        ///// <returns>True if rendering can begin.</returns>
+        //public override bool CanBeginRender(Graphics g, ref Rectangle bbox)
+        //{
+        //    var available_bbox = bbox;
+
+        //    for (int i = 0; i < Renderers.Count; ++i)
+        //    {
+        //        var r = Renderers[i];
+
+
+
+        //        available_bbox.Width = r.Width;
+        //        if (r.LastResult != RenderStatus.Done)
+        //        {
+        //            if (!r.CanBeginRender(g, ref available_bbox))
+        //                return false;
+        //        }
+        //        available_bbox.X += r.Width;
+        //        available_bbox.Width -= r.Width;
+        //    }
+        //    return true;
+        //}
+
+        /// <summary>
+        /// Lazy initialization of the child results array. 
+        /// Done here so subclasses and consumers can transparently
+        /// add elements directly to the Renderers collection
+        /// without needing to worry about updating the internal list.
+        /// </summary>
+        protected void CheckChildResultArray()
         {
-            var available_bbox = bbox;
-            for (int i = 0; i < Renderers.Count; ++i)
+
+            if (ChildResults == null)
             {
-                var r = Renderers[i];
-                available_bbox.Width = r.Width;
-                if (r.LastResult != RenderStatus.Done)
+                ChildResults = new RenderResult[Renderers.Count];
+                for (int i = 0; i < ChildResults.Length; ++i)
                 {
-                    if (!r.CanBeginRender(g, ref available_bbox))
-                        return false;
-                }
-                available_bbox.X += r.Width;
-                available_bbox.Width -= r.Width;
+                    ChildResults[i] = new RenderResult();
+                } 
             }
-            return true;
         }
 
         /// <summary>
@@ -684,49 +701,58 @@ namespace PrintRenderer
         /// </summary>
         /// <param name="g">Graphics</param>
         /// <param name="bbox">Bbox</param>
-        /// <returns>Result of the render operation.</returns>
-        public override RenderStatus Render(Graphics g, ref Rectangle bbox)
+        /// <param name="result">Result of the render operation.</param>
+        public override void Render(Graphics g, ref Rectangle bbox, ref RenderResult result)
         {
-            bool more = false;
-            RenderStatus result;
-
+            if (Renderers.Count == 0)
+            {
+                result.Status = RenderStatus.Done;
+                result.RenderArea = Rectangle.Empty;
+                return;
+            }
+            CheckChildResultArray();
+            RenderStatus overall_status = RenderStatus.Done;
             var border_bbox = RenderMethods.AdjustedBBox(bbox, Padding);
             var available_bbox = RenderMethods.AdjustedBBox(border_bbox, Margin);
             RenderMethods.AdjustBBoxForAlignment(ref available_bbox, Width, Alignment);
 
             RenderableElement element;
+            RenderResult last_result;
             int n = Renderers.Count;
 
-            int height = Padding.VSize + Margin.VSize;
-            int width = Padding.HSize + Margin.HSize;
+            int height = 0;
 
             for (int i = 0; i < n; ++i)
             {
                 element = Renderers[i];
-                // Only render if the cell needs to render more data.
+                last_result = ChildResults[i];
 
-                if (element.LastResult != RenderStatus.Done)
+                if (last_result.Status != RenderStatus.Done)
                 {
-                    result = element.Render(g, ref available_bbox);
-                    height = Math.Max(element.LastRenderArea.Height, height);
-                }
-                else
-                {
-                    result = RenderStatus.Done;
+                    element.Render(g, ref available_bbox, ref last_result);
+                    if (last_result.Status == RenderStatus.Incomplete)
+                    {
+                        overall_status = RenderStatus.Incomplete;
+                    }
+
+                    height = Math.Max(last_result.RenderArea.Height, height);
                 }
 
-                // Move the available bbox over by the cell's width.
-                available_bbox.X += element.Width;
-                width += element.Width;
-                more = more || result == RenderStatus.Incomplete;
+                // Move the available bbox over by the element's width.
+                // if the renderer misreports its with from the last
+                // render operation, that's its fault, not ours. 
+                available_bbox.X += last_result.RenderArea.Width;
             }
 
-            LastRenderArea.X = bbox.X;
-            LastRenderArea.Y = bbox.Y;
-            LastRenderArea.Width = width;
-            LastRenderArea.Height = height;
-            LastResult = more ? RenderStatus.Incomplete : RenderStatus.Done;
-            return LastResult;
+            // The horizontal layout renderer consumes its full width.
+            // Status is determined by whether it contains *any* child 
+            // elements that still need to be rendered, as some child
+            // elements may break across a page while others might fit. 
+            result.Status = overall_status;
+            result.RenderArea.X = bbox.X;
+            result.RenderArea.Y = bbox.Y;
+            result.RenderArea.Width = bbox.Width;
+            result.RenderArea.Height = height + Padding.VSize + Margin.VSize;
         }
     }
 }

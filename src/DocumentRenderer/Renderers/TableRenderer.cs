@@ -1,6 +1,7 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Drawing;
-
 
 namespace PrintRenderer.TableRenderer
 {
@@ -41,11 +42,7 @@ namespace PrintRenderer.TableRenderer
         public string Text
         {
             get => Reader.Get();
-            set
-            {
-                LastResult = RenderStatus.None;
-                Reader.Set(value);
-            }
+            set => Reader.Set(value);
         }
 
         /// <summary>
@@ -82,30 +79,30 @@ namespace PrintRenderer.TableRenderer
         /// </summary>
         /// <param name="g">Graphics object</param>
         /// <param name="bbox">Bounding box.</param>
-        /// <returns>Result of the render operation.</returns>
-        override public RenderStatus Render(Graphics g, ref Rectangle bbox)
+        /// <param name="result">Result of the render operation.</param>
+        override public void Render(Graphics g, ref Rectangle bbox, ref RenderResult result)
         {
             g.PageUnit = GraphicsUnit.Display;
             var char_width = _StringWidth(g, "a");
             var font_height = Font.GetHeight(g);
             var line_width = (int)(bbox.Width / char_width);
-            return _InternalRender(g, ref bbox, char_width, font_height, line_width);
+            _InternalRender(g, ref bbox, char_width, font_height, line_width, ref result);
         }
 
-        /// <summary>
-        /// Indicates whether the text block can begin rendering in the provided 
-        /// BBox.
-        /// </summary>
-        /// <param name="g">Graphics object</param>
-        /// <param name="bbox">Bounding box.</param>
-        /// <returns>True if the cell can be partially rendered, else false.</returns>
-        override public bool CanBeginRender(Graphics g, ref Rectangle bbox)
-        {
-            //SizeF size = g.MeasureString("a", Font, 10000, _StringFormat);
-            var min_height = Font.GetHeight(g);
-            var min_width = _StringWidth(g, "a");
-            return (min_height <= bbox.Height) && (min_width <= bbox.Width);
-        }
+        ///// <summary>
+        ///// Indicates whether the text block can begin rendering in the provided 
+        ///// BBox.
+        ///// </summary>
+        ///// <param name="g">Graphics object</param>
+        ///// <param name="bbox">Bounding box.</param>
+        ///// <returns>True if the cell can be partially rendered, else false.</returns>
+        //override public bool CanBeginRender(Graphics g, ref Rectangle bbox)
+        //{
+        //    //SizeF size = g.MeasureString("a", Font, 10000, _StringFormat);
+        //    var min_height = Font.GetHeight(g);
+        //    var min_width = _StringWidth(g, "a");
+        //    return (min_height <= bbox.Height) && (min_width <= bbox.Width);
+        //}
     }
 
     public partial class TextContent : Content
@@ -122,7 +119,33 @@ namespace PrintRenderer.TableRenderer
             return g.MeasureString(text, Font, 10000, InternalUtil.StringFormat).Width;
         }
 
-        private RenderStatus _InternalRender(Graphics g, ref Rectangle bbox, float char_width, float font_height, int max_line)
+        /// <summary>
+        /// Calculate the X coordinate to draw the provided line 
+        /// based on the current Alignment setting. 
+        /// </summary>
+        /// <param name="width">Line width.</param>
+        /// <param name="bbox">Bounding box.</param>
+        /// <param name="alignment">Text alignment.</param>
+        /// <returns></returns>
+        private float CalcXPosition(float width, ref Rectangle bbox, Alignment alignment)
+        {
+            switch (alignment)
+            {
+                case Alignment.Left:
+                    return bbox.Left;
+                case Alignment.Right:
+                    return bbox.Right - width;
+                case Alignment.Center:
+                    int middle = (bbox.Right + bbox.Left) / 2;
+                    return middle - width / 2;
+                default:
+                    break;
+            }
+            // just in case anything changes
+            throw new NotImplementedException($"Alignment: {alignment.ToString()}");
+        }
+
+        private void _InternalRender(Graphics g, ref Rectangle bbox, float char_width, float font_height, int max_line, ref RenderResult result)
         {
             float y = bbox.Y;
             var remaining = (int)(bbox.Height / font_height);
@@ -135,18 +158,17 @@ namespace PrintRenderer.TableRenderer
             {
                 line = Reader.Read(max_line);
                 line_width = _StringWidth(g, line);
-                x = RenderMethods.CalcXPosition(line_width, ref bbox, Alignment);
+                x = CalcXPosition(line_width, ref bbox, Alignment);
                 g.DrawString(line, Font, Brush, x, y, InternalUtil.StringFormat);
                 y += font_height;
             }
 
             // calculate the rendered area
-            LastRenderArea.X = bbox.X;
-            LastRenderArea.Y = bbox.Y;
-            LastRenderArea.Width = (int)Math.Ceiling(char_width * max_line);
-            LastRenderArea.Height = (int)Math.Ceiling(y) - bbox.Y;
-            LastResult = Reader.EOF ? RenderStatus.Done : RenderStatus.Incomplete;
-            return LastResult;
+            result.Status = Reader.EOF ? RenderStatus.Done : RenderStatus.Incomplete;
+            result.RenderArea.X = bbox.X;
+            result.RenderArea.Y = bbox.Y;
+            result.RenderArea.Width = (int)Math.Ceiling(char_width * max_line);
+            result.RenderArea.Height = (int)Math.Ceiling(y) - bbox.Y;
         }
     }
 
@@ -232,47 +254,134 @@ namespace PrintRenderer.TableRenderer
             (Content as TextContent).SetText(text, font);
         }
 
-        /// <summary>
-        /// Indicates whether the current cell can begin rendering in the provided 
-        /// BBox.
-        /// </summary>
-        /// <param name="g">Graphics object</param>
-        /// <param name="bbox">Bounding box.</param>
-        /// <returns>True if the cell can be partially rendered, else false.</returns>
-        public override bool CanBeginRender(Graphics g, ref Rectangle bbox)
-        {
-            return Content.CanBeginRender(g, ref bbox);
-        }
+        ///// <summary>
+        ///// Indicates whether the current cell can begin rendering in the provided 
+        ///// BBox.
+        ///// </summary>
+        ///// <param name="g">Graphics object</param>
+        ///// <param name="bbox">Bounding box.</param>
+        ///// <returns>True if the cell can be partially rendered, else false.</returns>
+        //public override bool CanBeginRender(Graphics g, ref Rectangle bbox)
+        //{
+        //    return Content.CanBeginRender(g, ref bbox);
+        //}
 
         /// <summary>
         /// Render the cell in the provided bounding box.
         /// </summary>
         /// <param name="g">Graphics object.</param>
         /// <param name="bbox">Allowed bounding box.</param>
-        /// <returns>Result of the render operation.</returns>
-        public override RenderStatus Render(Graphics g, ref Rectangle bbox)
+        /// <param name="result">Result of the render operation.</param>
+        public override void Render(Graphics g, ref Rectangle bbox, ref RenderResult result)
         {
-            var allowed_bbox = bbox;
-            allowed_bbox.Width = Width;
-            LastResult = Content.Render(g, ref allowed_bbox);
-            LastRenderArea = Content.LastRenderArea;
-            return LastResult;
+            var original = bbox;
+            original.Width = Width;
+            var border_bbox = RenderMethods.AdjustedBBox(original, Padding);
+            var allowed_bbox = RenderMethods.AdjustedBBox(border_bbox, Margin);
+            Content.Render(g, ref allowed_bbox, ref result);
+
+            Borders.Draw(g, ref border_bbox);
+
+            // result.Status inherits the content's rendering result status.
+            // bounding box is the original box with height shrunk to match
+            // the height actually used. 
+            result.RenderArea.X = original.X;
+            result.RenderArea.Y = original.Y;
+            result.RenderArea.Width = original.Width;
+            result.RenderArea.Height += Padding.HSize + Margin.HSize;
+        }
+    }
+
+    /// <summary>
+    /// Represents a readonly collection of cells.
+    /// </summary>
+    public class CellsCollection : IReadOnlyList<Cell>
+    {
+        private RendererCollection Cells;
+
+        /// <summary>
+        /// Create a new cells collection.
+        /// </summary>
+        /// <param name="cells"></param>
+        public CellsCollection(RendererCollection cells)
+        {
+            Cells = cells;
+        }
+
+        /// <summary>
+        /// Gets the cell.
+        /// </summary>
+        /// <param name="index">Index</param>
+        /// <returns>Cell</returns>
+        public Cell this[int index] => Cells[index] as Cell;
+
+        /// <summary>
+        /// Gets the number of cells.
+        /// </summary>
+        public int Count => Cells.Count;
+
+        /// <summary>
+        /// Gets the enumerator. 
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerator<Cell> GetEnumerator()
+        {
+            for (int i = 0; i < Count; ++i)
+            {
+                yield return Cells[i] as Cell;
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
         }
     }
 
     public partial class Row : HorizontalLayoutRenderer
     {
-        /// <summary>
-        /// Collection of cells to render for this row
-        /// </summary>
-        public RendererCollection Cells => Renderers;
 
         /// <summary>
         /// Create a new row.
         /// </summary>
         public Row() : base()
         {
+            Cells = new CellsCollection(Renderers);
         }
+
+        /// <summary>
+        /// Set the widths of cells in the row to the widths in the array. 
+        /// Throws an ArgumentException if the length of the array does not
+        /// match the number of cells contained. 
+        /// </summary>
+        /// <param name="args"></param>
+        public void SetWidths(params int[] args)
+        {
+            if (args.Length != Renderers.Count)
+                throw new ArgumentException($"Number of widths provided does not match number of cells. ({args.Length} != {Renderers.Count})");
+            for (int i = 0; i < args.Length; ++i)
+                Renderers[i].Width = args[i];
+        }
+
+        /// <summary>
+        /// Returns a read-only view of the cells. Note cells may be modified individually. 
+        /// </summary>
+        public CellsCollection Cells { get; private set; }
+
+        /// <summary>
+        /// Returns the cell at the given index
+        /// </summary>
+        /// <param name="index"></param>
+        /// <returns></returns>
+        public Cell GetCell(int index)
+        {
+            return Renderers[index] as Cell;
+        }
+
+        /// <summary>
+        /// Returns the number of cells in this row. 
+        /// </summary>
+        public int CellCount => Renderers.Count;
 
         /// <summary>
         /// Get the width of this row. 
@@ -289,7 +398,16 @@ namespace PrintRenderer.TableRenderer
         /// <param name="cell">cell to add.</param>
         public void AddCell(Cell cell)
         {
-            Cells.Add(cell);
+            Renderers.Add(cell);
+        }
+
+        /// <summary>
+        /// Removes all cells from the row.
+        /// </summary>
+        public void ClearCells()
+        {
+            ChildResults = null;
+            Renderers.Clear();
         }
 
         /// <summary>
@@ -317,10 +435,10 @@ namespace PrintRenderer.TableRenderer
         private protected int _GetWidth()
         {
             var w = 0;
-            var n = Cells.Count;
+            var n = Renderers.Count;
             for (var i = 0; i < n; ++i)
             {
-                w += Cells[i].Width;
+                w += Renderers[i].Width;
             }
 
             return w;
@@ -339,40 +457,52 @@ namespace PrintRenderer.TableRenderer
         /// </summary>
         protected IterRowRenderer() : base()
         {
+            LastStatus = RenderStatus.None;
         }
+
+        /// <summary>
+        /// Last render operation status. Needed for the
+        /// iter row renderer to track whether or not to
+        /// call its Update() method. 
+        /// </summary>
+        protected RenderStatus LastStatus;
 
         /// <summary>
         /// Render. 
         /// </summary>
         /// <param name="g">Graphics object.</param>
         /// <param name="bbox">Bbox.</param>
-        /// <returns>Result of the render operation.</returns>
-        public override RenderStatus Render(Graphics g, ref Rectangle bbox)
+        /// <param name="result">Result of the render operation.</param>
+        public override void Render(Graphics g, ref Rectangle bbox, ref RenderResult result)
         {
+            // must be called before ResetCellResults(),
+            // otherwise ChildResults will be null.
+            CheckChildResultArray();
+
             var available_bbox = bbox;
             while (true)
             {
-                if (LastResult == RenderStatus.Done || LastResult == RenderStatus.None)
+                if (LastStatus == RenderStatus.Done || LastStatus == RenderStatus.None)
                 {
                     ResetCellResults();
                     if (!UpdateRow())
                     {
-                        LastResult = RenderStatus.Done;
-                        return RenderStatus.Done;
+                        LastStatus = RenderStatus.Done;
+                        break;
                     }
                 }
 
-                // LastRenderArea set by base.Render()
-                LastResult = base.Render(g, ref available_bbox);
+                base.Render(g, ref available_bbox, ref result);
 
-                if (LastResult == RenderStatus.Incomplete)
+                if (result.Status == RenderStatus.Incomplete)
                 {
-                    return LastResult;
+                    break;
                 }
 
-                available_bbox.Y += LastRenderArea.Height;
-                available_bbox.Height -= LastRenderArea.Height;
+                available_bbox.Y += result.RenderArea.Height;
+                available_bbox.Height -= result.RenderArea.Height;
             }
+            // result data is already set by base.Render()
         }
 
         /// <summary>
@@ -382,9 +512,9 @@ namespace PrintRenderer.TableRenderer
         /// </summary>
         private void ResetCellResults()
         {
-            for (var i = 0; i < Renderers.Count; ++i)
+            for (var i = 0; i < ChildResults.Length; ++i)
             {
-                Renderers[i].LastResult = RenderStatus.None;
+                ChildResults[i].Status = RenderStatus.None;
             }
         }
 
@@ -431,71 +561,4 @@ namespace PrintRenderer.TableRenderer
             return false;
         }
     }
-
-    ///// <summary>
-    ///// Uses an Action(T) to update the row object until there is no more data left. 
-    ///// </summary>
-    //public class CallbackRowRenderer : RowRenderer
-    //{
-    //    /// <summary>
-    //    /// Function called with the current RowRender object
-    //    /// to set the data for the next row to be rendered. 
-    //    /// Must return `true` to continue rendering, or `false`
-    //    /// if rendering is complete. 
-    //    /// </summary>
-    //    private Func<CallbackRowRenderer, bool> UpdateRow;
-    //    private bool _GetMoreData;
-
-    //    /// <summary>
-    //    /// Create a new row.
-    //    /// </summary>
-    //    /// <param name="UpdateRowCallback">Update row callback.</param>
-    //    public CallbackRowRenderer(Func<CallbackRowRenderer, bool> UpdateRowCallback) : base()
-    //    {
-    //        UpdateRow = UpdateRowCallback;
-    //        _GetMoreData = true;
-    //    }
-
-    //    /// <summary>
-    //    /// Render.
-    //    /// </summary>
-    //    /// <param name="g">Graphics object.</param>
-    //    /// <param name="bbox">Bounding box.</param>
-    //    /// <returns>Result of the rendering operation.</returns>
-    //    public override RenderResult Render(Graphics g, ref Rectangle bbox)
-    //    {
-    //        RenderResult result;
-    //        Rectangle available_bbox = bbox;
-
-    //        while (true)
-    //        {
-    //            if (_GetMoreData)
-    //            {
-    //                // currently results in an extra page being printed if the 
-    //                // callback renderer is the last renderer, and the last row 
-    //                // is the last to fit on a page. 
-    //                bool have_data = UpdateRow(this);
-    //                if (!have_data)
-    //                {
-    //                    return RenderResult.Done;
-    //                }
-    //            }
-
-    //            // LastRenderArea set by base.Render()
-    //            result = base.Render(g, ref available_bbox);
-
-    //            if (result == RenderResult.Incomplete)
-    //            {
-    //                _GetMoreData = false;
-    //                return RenderResult.Incomplete;
-    //            }
-    //            else
-    //            {
-    //                _GetMoreData = true;
-    //            }
-    //            available_bbox.Y += LastRenderArea.Height;
-    //            available_bbox.Height -= LastRenderArea.Height;
-    //        }
-    //    }
-    //}
 }
