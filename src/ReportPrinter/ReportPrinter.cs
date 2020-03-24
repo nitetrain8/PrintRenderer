@@ -162,7 +162,7 @@ namespace ReportPrinter
         {
             Printer = p;
 
-            int[] widths = new int[] { 50, 200, 300, 150 };
+            int[] widths = new int[] { 75, 175, 300, 150 };
 
             _title = new ReportTitle("Recipe Steps Report");
             _metadata = new ReportMetadata("Batch name: \"test\"");

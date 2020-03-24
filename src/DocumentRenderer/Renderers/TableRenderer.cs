@@ -493,7 +493,7 @@ namespace PrintRenderer.TableRenderer
                 }
 
                 base.Render(g, ref available_bbox, ref result);
-
+                LastStatus = result.Status;
                 if (result.Status == RenderStatus.Incomplete)
                 {
                     break;
