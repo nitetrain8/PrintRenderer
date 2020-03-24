@@ -27,7 +27,7 @@ namespace PrintRenderer.TableRenderer
     public partial class TextContent : Content
     {
         /// <summary>
-        /// Font for rendered text.
+        /// Font for rendered text. Must be monospaced, or the rendering will be corrupted. 
         /// </summary>
         public Font Font;
 
@@ -89,20 +89,20 @@ namespace PrintRenderer.TableRenderer
             _InternalRender(g, ref bbox, char_width, font_height, line_width, ref result);
         }
 
-        ///// <summary>
-        ///// Indicates whether the text block can begin rendering in the provided 
-        ///// BBox.
-        ///// </summary>
-        ///// <param name="g">Graphics object</param>
-        ///// <param name="bbox">Bounding box.</param>
-        ///// <returns>True if the cell can be partially rendered, else false.</returns>
-        //override public bool CanBeginRender(Graphics g, ref Rectangle bbox)
-        //{
-        //    //SizeF size = g.MeasureString("a", Font, 10000, _StringFormat);
-        //    var min_height = Font.GetHeight(g);
-        //    var min_width = _StringWidth(g, "a");
-        //    return (min_height <= bbox.Height) && (min_width <= bbox.Width);
-        //}
+        /// <summary>
+        /// Indicates whether the text block can begin rendering in the provided 
+        /// BBox.
+        /// </summary>
+        /// <param name="g">Graphics object</param>
+        /// <param name="bbox">Bounding box.</param>
+        /// <returns>True if the cell can be partially rendered, else false.</returns>
+        override public bool CanBeginRender(Graphics g, ref Rectangle bbox)
+        {
+            SizeF size = g.MeasureString("a", Font, 10000, InternalUtil.StringFormat);
+            //var min_height = Font.GetHeight(g);
+            //var min_width = _StringWidth(g, "a");
+            return (size.Height <= bbox.Height) && (size.Width <= bbox.Width);
+        }
     }
 
     public partial class TextContent : Content
@@ -153,11 +153,11 @@ namespace PrintRenderer.TableRenderer
             string line;
             float x;
             float line_width;
-
             for (; remaining > 0 && !Reader.EOF; --remaining)
             {
                 line = Reader.Read(max_line);
-                line_width = _StringWidth(g, line);
+                //line_width = _StringWidth(g, line);
+                line_width = line.Length * char_width;  // only monospaced fonts supported!!
                 x = CalcXPosition(line_width, ref bbox, Alignment);
                 g.DrawString(line, Font, Brush, x, y, InternalUtil.StringFormat);
                 y += font_height;
@@ -254,17 +254,17 @@ namespace PrintRenderer.TableRenderer
             (Content as TextContent).SetText(text, font);
         }
 
-        ///// <summary>
-        ///// Indicates whether the current cell can begin rendering in the provided 
-        ///// BBox.
-        ///// </summary>
-        ///// <param name="g">Graphics object</param>
-        ///// <param name="bbox">Bounding box.</param>
-        ///// <returns>True if the cell can be partially rendered, else false.</returns>
-        //public override bool CanBeginRender(Graphics g, ref Rectangle bbox)
-        //{
-        //    return Content.CanBeginRender(g, ref bbox);
-        //}
+        /// <summary>
+        /// Indicates whether the current cell can begin rendering in the provided 
+        /// BBox.
+        /// </summary>
+        /// <param name="g">Graphics object</param>
+        /// <param name="bbox">Bounding box.</param>
+        /// <returns>True if the cell can be partially rendered, else false.</returns>
+        public override bool CanBeginRender(Graphics g, ref Rectangle bbox)
+        {
+            return Content.CanBeginRender(g, ref bbox);
+        }
 
         /// <summary>
         /// Render the cell in the provided bounding box.
@@ -288,7 +288,7 @@ namespace PrintRenderer.TableRenderer
             result.RenderArea.X = original.X;
             result.RenderArea.Y = original.Y;
             result.RenderArea.Width = original.Width;
-            result.RenderArea.Height += Padding.HSize + Margin.HSize;
+            result.RenderArea.Height += Padding.VSize + Margin.VSize;
         }
     }
 

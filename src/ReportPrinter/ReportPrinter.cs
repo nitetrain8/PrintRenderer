@@ -2,6 +2,7 @@
 using PrintRenderer.TableRenderer;
 using System;
 using System.Drawing;
+using System.Data.OleDb;
 
 namespace ReportPrinter
 {
@@ -73,7 +74,11 @@ namespace ReportPrinter
             Timestamp = new TextCell("", ReportFonts.RecordFont);
             Step = new TextCell("", ReportFonts.RecordFont);
             StepType = new TextCell("", ReportFonts.RecordFont);
+
             NewRecipe = new TextCell("", ReportFonts.RecordFont, Alignment.Center);
+            NewRecipe.Padding.Top = 10;
+            NewRecipe.Padding.Bottom = 10;
+
             Row = row;
             ConfigureForRecipeSteps();
         }
@@ -109,8 +114,7 @@ namespace ReportPrinter
                 ConfigureForNewRecipe();
             }
 
-            NewRecipe.SetText($"------------ New Recipe: {recipe_name} ------------");
-
+            NewRecipe.SetText($"------------------- New Recipe: \"{recipe_name}\" -------------------");
         }
 
         private void ConfigureForNewRecipe()
@@ -186,6 +190,67 @@ namespace ReportPrinter
         public virtual bool Update()
         {
             throw new NotImplementedException();
+        }
+    }
+
+    public class FullSQLRecipeStepsReport : RecipeStepsReportPrinter
+    {
+        OleDbConnection connection;
+        OleDbCommand cmd;
+        OleDbDataReader reader;
+        object[] rowdata;
+        int Index;
+        public FullSQLRecipeStepsReport(int batch_id)
+        {
+            connection = new OleDbConnection(@"Provider=Microsoft.ACE.OLEDB.12.0;User ID=PBSShell;
+Password=Gd4cV;Data Source=C:\Database\PBSBioreactorDatabase.mdb;Mode=ReadWrite;
+Persist Security Info=False;Jet OLEDB:System database=C:\Database\System.mdw");
+            connection.Open();
+            var sql = $"SELECT TIME_STAMP,EVENT_DETAIL,ERROR_MESSAGE,SOURCE from EVENTS WHERE ((EVENT_TYPE=\"Recipe Generated\" OR ERROR_MESSAGE=\"Recipe started\")) ORDER BY TIME_STAMP Asc";
+            cmd = new OleDbCommand(sql, connection);
+            reader = cmd.ExecuteReader();
+            rowdata = new object[4];
+            Index = 0;
+        }
+
+        public void Close()
+        {
+            reader.Close();
+            cmd.Dispose();
+            connection.Close();
+            connection.Dispose();
+            reader = null;
+            cmd = null;
+            connection = null;
+        }
+
+
+        public override bool Update()
+        {
+            bool have_data = reader.Read();
+            if (!have_data)
+                return false;
+
+            Index += 1;
+            reader.GetValues(rowdata);
+
+            var time = (DateTime)rowdata[0];
+            var detail = (string)rowdata[1];
+            var err = (string)rowdata[2];
+            var source = (string)rowdata[3];
+
+            // New batch: hla ips perf r01
+            // Run recipe: sonosep-LoopRecipe
+            if (err == "Recipe started") // new recipe start event
+            {
+                var name = detail.Substring("Run recipe: ".Length);
+                _record.SetNewRecipeData(name);
+            }
+            else
+            {
+                _record.SetRecipeStepData(Index.ToString(), time.ToString(), detail, source);
+            }
+            return true;
         }
     }
 

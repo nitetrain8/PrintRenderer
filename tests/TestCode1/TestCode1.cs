@@ -31,11 +31,14 @@ namespace TestCode1
         private static void Test4()
         {
             Console.WriteLine("nothing to see here....");
-            var printer = new ReportPrinter.DummyRecipeStepsReport();
+            var printer = new ReportPrinter.FullSQLRecipeStepsReport(2);
+            //var printer = new ReportPrinter.DummyRecipeStepsReport();
             printer.Printer.Document.PrinterSettings.PrinterName = "Microsoft Print to PDF";
             printer.Printer.Document.PrinterSettings.PrintToFile = true;
             printer.Printer.Document.PrinterSettings.PrintFileName = Path.Combine(KnownFolders.Downloads, "hmm.pdf");
+            Console.WriteLine("Begin printing...");
             printer.Print();
+            Console.WriteLine("yay!");
         }
 
         private static void Main1(string[] args)

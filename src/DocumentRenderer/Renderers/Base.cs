@@ -142,13 +142,13 @@ namespace PrintRenderer
         ///// </summary>
         //bool IsRendering { get; }
 
-        ///// <summary>
-        ///// Indicates whether rendering can begin.
-        ///// </summary>
-        ///// <param name="g">Graphics object.</param>
-        ///// <param name="bbox">BBox to check.</param>
-        ///// <returns>True if the rendering operation can be at least partially completed.</returns>
-        //bool CanBeginRender(Graphics g, ref Rectangle bbox);
+        /// <summary>
+        /// Indicates whether rendering can begin.
+        /// </summary>
+        /// <param name="g">Graphics object.</param>
+        /// <param name="bbox">BBox to check.</param>
+        /// <returns>True if the rendering operation can be at least partially completed.</returns>
+        bool CanBeginRender(Graphics g, ref Rectangle bbox);
     }
 
     /// <summary>
@@ -493,13 +493,13 @@ namespace PrintRenderer
             Alignment = Alignment.Left;
         }
 
-        ///// <summary>
-        ///// Throws NotImplementedException
-        ///// </summary>
-        ///// <param name="g"></param>
-        ///// <param name="bbox"></param>
-        ///// <returns></returns>
-        //abstract public bool CanBeginRender(Graphics g, ref Rectangle bbox);
+        /// <summary>
+        /// Throws NotImplementedException
+        /// </summary>
+        /// <param name="g"></param>
+        /// <param name="bbox"></param>
+        /// <returns></returns>
+        abstract public bool CanBeginRender(Graphics g, ref Rectangle bbox);
 
         /// <summary>
         /// Throws NotImplementedException
@@ -559,20 +559,20 @@ namespace PrintRenderer
             CurrentIndex = 0;
         }
 
-        ///// <summary>
-        ///// For a vertical layout of objects, the render operation can be at 
-        ///// least partially completed as long as the next object in the list can
-        ///// be at least partially rendered, including through repeated incomplete
-        ///// render operations. 
-        ///// </summary>
-        ///// <param name="g"></param>
-        ///// <param name="bbox"></param>
-        ///// <returns>True if the render operation can be at least partially completed.</returns>
-        //public override bool CanBeginRender(Graphics g, ref Rectangle bbox)
-        //{
-        //    RenderableElement r = Renderers[CurrentIndex];
-        //    return r.CanBeginRender(g, ref bbox);
-        //}
+        /// <summary>
+        /// For a vertical layout of objects, the render operation can be at 
+        /// least partially completed as long as the next object in the list can
+        /// be at least partially rendered, including through repeated incomplete
+        /// render operations. 
+        /// </summary>
+        /// <param name="g"></param>
+        /// <param name="bbox"></param>
+        /// <returns>True if the render operation can be at least partially completed.</returns>
+        public override bool CanBeginRender(Graphics g, ref Rectangle bbox)
+        {
+            RenderableElement r = Renderers[CurrentIndex];
+            return r.CanBeginRender(g, ref bbox);
+        }
 
         /// <summary>
         /// Render the collection of objects held by this layout renderer. 
@@ -649,33 +649,37 @@ namespace PrintRenderer
         /// </summary>
         protected RenderResult[] ChildResults;
 
-        ///// <summary>
-        ///// True if any of the not-yet-fully-rendered subelements can begin rendering.
-        ///// </summary>
-        ///// <param name="g">Graphics</param>
-        ///// <param name="bbox">Bbox</param>
-        ///// <returns>True if rendering can begin.</returns>
-        //public override bool CanBeginRender(Graphics g, ref Rectangle bbox)
-        //{
-        //    var available_bbox = bbox;
+        /// <summary>
+        /// True if any of the not-yet-fully-rendered subelements can begin rendering.
+        /// </summary>
+        /// <param name="g">Graphics</param>
+        /// <param name="bbox">Bbox</param>
+        /// <returns>True if rendering can begin.</returns>
+        public override bool CanBeginRender(Graphics g, ref Rectangle bbox)
+        {
+            var available_bbox = bbox;
 
-        //    for (int i = 0; i < Renderers.Count; ++i)
-        //    {
-        //        var r = Renderers[i];
+            for (int i = 0; i < Renderers.Count; ++i)
+            {
+                var r = Renderers[i];
+                available_bbox.Width = r.Width;
 
+                RenderStatus last_result;
+                if (ChildResults == null)
+                    last_result = RenderStatus.None;
+                else
+                    last_result = ChildResults[i].Status;
 
-
-        //        available_bbox.Width = r.Width;
-        //        if (r.LastResult != RenderStatus.Done)
-        //        {
-        //            if (!r.CanBeginRender(g, ref available_bbox))
-        //                return false;
-        //        }
-        //        available_bbox.X += r.Width;
-        //        available_bbox.Width -= r.Width;
-        //    }
-        //    return true;
-        //}
+                if (last_result != RenderStatus.Done)
+                {
+                    if (!r.CanBeginRender(g, ref available_bbox))
+                        return false;
+                }
+                available_bbox.X += r.Width;
+                available_bbox.Width -= r.Width;
+            }
+            return true;
+        }
 
         /// <summary>
         /// Lazy initialization of the child results array. 

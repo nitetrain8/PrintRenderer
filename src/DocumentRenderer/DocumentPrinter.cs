@@ -72,21 +72,15 @@ namespace PrintRenderer
                 ev.HasMorePages = false;
                 return;
             }
+
             Rectangle bbox = ev.MarginBounds;
-            RenderResult result = new RenderResult();
-            Render(ev.Graphics, ref bbox, ref result);
-
-            // If rendering is incomplete, and the only thing rendered
-            // on the page was the padding and margin, then rendering failed
-            // and we have to bail. 
-            if (result.Status == RenderStatus.Incomplete)
+            Graphics g = ev.Graphics;
+            if (!Renderers[CurrentIndex].CanBeginRender(g, ref bbox))
             {
-                var current_renderer = Renderers[CurrentIndex];
-                var h = current_renderer.Margin.VSize + current_renderer.Margin.HSize;
-                if (result.RenderArea.Height == h)
-                    throw new Exceptions.DoesNotFitOnPageException("Document rendering failed");
+                throw new Exceptions.DoesNotFitOnPageException("Rendering failed");
             }
-
+            RenderResult result = new RenderResult();
+            Render(g, ref bbox, ref result);
             ev.HasMorePages = result.Status == RenderStatus.Incomplete;
         }
 
