@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 /// From: https://stackoverflow.com/a/21953690
 /// Modified with properties for each folder type (KnownFolders.Documents, etc)
 /// </summary>
-public static class KnownFolders
+public static class KnownFolders 
 {
     private static string[] _knownFolderGuids = new string[]
     {
@@ -45,6 +45,7 @@ public static class KnownFolders
     ///     could not be retrieved.</exception>
     public static string GetPath(FolderType knownFolder)
     {
+		//derp
         return GetPath(knownFolder, false);
     }
 
