@@ -45,7 +45,7 @@ public static class KnownFolders
     ///     could not be retrieved.</exception>
     public static string GetPath(FolderType knownFolder)
     {
-		//derp
+		//der
         return GetPath(knownFolder, false);
     }
 
